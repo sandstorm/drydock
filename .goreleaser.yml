@@ -51,10 +51,14 @@ brews:
 
     # Your app's homepage.
     # Default is empty.
-    homepage: "https://github.com/sandstorm/docker-debug"
+    homepage: "https://github.com/sandstorm/docker-execroot"
 
     # Your app's description.
     # Default is empty.
     description: "Sandstorm Docker Debug Tools"
+
+    # see https://ruby-doc.org/stdlib-2.7.2/libdoc/fileutils/rdoc/index.html
     install: |
-      bin.write_exec_script libexec/"sku"
+      mkdir_p File.expand_path('~') + "/.docker/cli-plugins/"
+      ln_sf "#{prefix}/docker-execroot", File.expand_path('~') + "/.docker/cli-plugins/docker-execroot"
+      ln_sf "#{prefix}/docker-execroot", File.expand_path('~') + "/.docker/cli-plugins/docker-vscode"
