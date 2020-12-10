@@ -33,7 +33,7 @@ changelog:
 
 brews:
   -
-    name: docker-debug
+    name: docker-execroot
 
     github:
       owner: sandstorm
