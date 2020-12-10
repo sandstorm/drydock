@@ -1,0 +1,44 @@
+
+code --verbose --log=trace
+
+
+4ee752c817c8        nicolaka/netshoot                 "nsenter --target 25…"   27 minutes ago      Up 27 minutes                                          aktion-zivilcourage-neos_DEBUG
+
+
+
+
+[39833:1210/212520.191784:INFO:CONSOLE(1741)] "%cTRACE color: #888 CommandService#executeCommand remote-containers.attachToRunningContainerFromViewlet", source: file:///Applications/Visual Studio Code.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js (1741)
+[main 2020-12-10T20:25:20.282Z] windowsManager#open pathsToOpen [
+  {
+    folderUri: h {
+      scheme: 'vscode-remote',
+      authority: 'attached-container+7b22636f6e7461696e65724e616d65223a222f616b74696f6e2d7a6976696c636f75726167652d6e656f735f4445425547227d',
+      path: '/proc_inner/1/root/app',
+      query: '',
+      fragment: '',
+      _formatted: undefined,
+      _fsPath: undefined
+    },
+    remoteAuthority: 'attached-container+7b22636f6e7461696e65724e616d65223a222f616b74696f6e2d7a6976696c636f75726167652d6e656f735f4445425547227d',
+    label: undefined
+  }
+]
+
+
+7b22636f6e7461696e65724e616d65223a222f616b74696f6e2d7a6976696c636f75726167652d6e656f735f4445425547227d
+
+➜  docker-execroot git:(master) ✗ node -e "console.log(Buffer.from('7b22636f6e7461696e65724e616d65223a222f616b74696f6e2d7a6976696c636f75726167652d6e656f735f4445425547227d', 'hex').toString('utf-8'))"
+{"containerName":"/aktion-zivilcourage-neos_DEBUG"}
+
+
+ code --remote attached-container+7b22636f6e7461696e65724e616d65223a222f616b74696f6e2d7a6976696c636f75726167652d6e656f735f4445425547227d /bin
+
+
+                (t.getParseAttachedContainerAuthority = function (e) {
+                    const t = A("attached-container", e);
+                    if (t) return "string" == typeof t ? { containerId: t } : (t.dockerHost && ((t.settings = { host: `tcp://${t.dockerHost.host}:${t.dockerHost.port}` }), delete t.dockerHost), t);
+                }),
+                (t.getAttachedContainerAuthority = function (e, t, n) {
+                    const r = JSON.stringify({ containerName: e, settings: t, cwd: n });
+                    return "attached-container+" + Buffer.from(r, "utf8").toString("hex");
+                }),

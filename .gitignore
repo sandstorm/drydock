@@ -1,0 +1,5 @@
+.idea
+docker-debug
+main
+*.so
+dist
