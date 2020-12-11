@@ -57,8 +57,25 @@ brews:
     # Default is empty.
     description: "Sandstorm Docker Debug Tools"
 
-    # see https://ruby-doc.org/stdlib-2.7.2/libdoc/fileutils/rdoc/index.html
+    custom_block: |
+      def caveats
+        caveats =
+          <<~EOS
+
+            !!! Please run the following commands to finish installing the docker-execroot plugin:
+
+            ---------------------------------------------------------------------------------
+            mkdir -p ~/.docker/cli-plugins
+            rm -f ~/.docker/cli-plugins/docker-execroot
+            ln -s #{pkgshare}/docker-execroot ~/.docker/cli-plugins/docker-execroot
+
+            rm -f ~/.docker/cli-plugins/docker-vscode
+            ln -s #{pkgshare}/docker-execroot ~/.docker/cli-plugins/docker-vscode
+            ---------------------------------------------------------------------------------
+          EOS
+
+        caveats
+      end
+
     install: |
-      mkdir_p File.expand_path('~') + "/.docker/cli-plugins/"
-      ln_sf "#{prefix}/docker-execroot", File.expand_path('~') + "/.docker/cli-plugins/docker-execroot"
-      ln_sf "#{prefix}/docker-execroot", File.expand_path('~') + "/.docker/cli-plugins/docker-vscode"
+      pkgshare.install Dir["*"]

@@ -281,10 +281,15 @@ Open VSCode Remote Containers as root; at path [PATH].
 
 			ensureImageExistsLocally(debugImage)
 
-
 			c := exec.Command("/bin/bash", "-c", "sleep 1; code --remote " + containerToOpen)
 			c.Start()
 
+			color.Printf("<op=bold;>---------------------------------------------------------------------------</>\n")
+			color.Printf("<op=bold;>Do not close this shell</> as long as you want to use VSCode in the container.\n")
+			color.Printf("The connected container file system is mounted in <op=bold;>/container.</>\n")
+			color.Printf("NOTE: the /proc file system of the connected container is mounted to\n")
+			color.Printf("      /procContainer, because otherwise, VS Code does not work.\n")
+			color.Printf("<op=bold;>---------------------------------------------------------------------------</>\n")
 			syscall.Exec(dockerExecutablePathAndFilename, dockerRunCommand, os.Environ())
 		},
 	}
