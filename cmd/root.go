@@ -38,7 +38,7 @@ import (
 
 var cfgFile string
 
-func execCommand(command string, args... string) (string, error) {
+func execCommand(command string, args ...string) (string, error) {
 	cmd := exec.Command(command, args...)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -127,8 +127,6 @@ Run a command AS ROOT in a running container or docker-compose service.
 
 <op=bold;>Change the debug container</>
 	docker execroot --no-chroot --debug-image=alpine <op=italic;>myContainer</>
-
-<op=underscore;>Using VSCode to:</>
 
 <op=underscore;>Background:</>
 
@@ -277,11 +275,11 @@ Open VSCode Remote Containers as root; at path [PATH].
 			bytes, err := json.Marshal(obj)
 			encodedStr := hex.EncodeToString(bytes)
 
-			containerToOpen := fmt.Sprintf("attached-container+%s %s", encodedStr, "/container" + containerPath)
+			containerToOpen := fmt.Sprintf("attached-container+%s %s", encodedStr, "/container"+containerPath)
 
 			ensureImageExistsLocally(debugImage)
 
-			c := exec.Command("/bin/bash", "-c", "sleep 1; code --remote " + containerToOpen)
+			c := exec.Command("/bin/bash", "-c", "sleep 1; code --remote "+containerToOpen)
 			c.Start()
 
 			color.Printf("<op=bold;>---------------------------------------------------------------------------</>\n")

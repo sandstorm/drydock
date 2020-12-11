@@ -1,5 +1,31 @@
 # docker execroot and docker vscode
 
+## Installation
+
+1. Run the following command to install via homebrew:
+
+   ```bash
+   brew install sandstorm/tap/docker-execroot
+   ```
+
+2. Add the correct symlinks
+
+   ```bash
+   mkdir -p ~/.docker/cli-plugins
+   rm -f ~/.docker/cli-plugins/docker-execroot
+   ln -s /usr/local/opt/docker-execroot/share/docker-execroot/docker-execroot ~/.docker/cli-plugins/docker-execroot
+   
+   rm -f ~/.docker/cli-plugins/docker-vscode
+   ln -s /usr/local/opt/docker-execroot/share/docker-execroot/docker-execroot ~/.docker/cli-plugins/docker-vscode
+   ```
+
+3. Profit!
+
+   ```
+   docker execroot -h
+   docker vscode -h
+   ```
+
 ### `docker execroot myContainer`
 
 - Run `docker execroot` is like `docker exec` as root; no matter what user is configured in the `Dockerfile` or in `docker-compose.yml`.
@@ -8,7 +34,6 @@
 - Convenience: You can either specify a container name, or also a `docker-compose` service name.
 - With `--no-chroot`, you can bring your own *Debug* container with your custom tools; e.g. useful to debug containers
   which start from `scratch` as base image (like Golang tools)
-
 
 ### `docker vscode`
 
