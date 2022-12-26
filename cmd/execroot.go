@@ -79,7 +79,7 @@ Run a command AS ROOT in a running container or docker-compose service.
 
 			dockerExecutablePathAndFilename := findexec.Find("docker", "")
 
-			dockerRunCommand := basicDockerRunCommand(fullContainerName, debugImage, pid)
+			dockerRunCommand := basicDockerRunCommand(fullContainerName, debugImage, pid, []string{})
 
 			// OPTIONAL: "mount" does not need to be specified here.
 			// - if leaving it OUT, the file system (and all tooling) is still from the nicolaka/netshoot container.
@@ -98,7 +98,7 @@ Run a command AS ROOT in a running container or docker-compose service.
 					color.Printf("<op=bold;>-----------------------------------------------------------------------------------</>\n")
 				} else {
 					// no command; so let's do a default where we mount the proc filesystem; and mount the target file system into /container
-					dockerRunCommand = append(dockerRunCommand, "/bin/bash", "-c", "mount -t proc proc /proc; ln -s /proc/1/root /container; /bin/bash -l")
+					dockerRunCommand = append(dockerRunCommand, "/bin/bash", "-c", mountSlashContainer+"/bin/bash -l")
 
 					color.Printf("<op=bold;>-----------------------------------------------------------</>\n")
 					color.Printf("The debugged container file system is mounted in <op=bold;>/container</>\n")

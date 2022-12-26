@@ -1,7 +1,9 @@
 package cmd
 
-func basicDockerRunCommand(fullContainerName, debugImage, pid string) []string {
-	return []string{
+const mountSlashContainer = "mount -t proc proc /proc; ln -s /proc/1/root /container;"
+
+func basicDockerRunCommand(fullContainerName, debugImage, pid string, extraDockerRunArgs []string) []string {
+	result := []string{
 		"docker", "run",
 		"--rm", // ephemeral container
 		"-it",  // interactive, with TTY
@@ -9,6 +11,11 @@ func basicDockerRunCommand(fullContainerName, debugImage, pid string) []string {
 		fullContainerName + "_DEBUG",
 		"--privileged", // we need privileged permissions to run nsenter (namespace enter), to enter the other container
 		"--pid=host",   // we need to see the *hosts* PIDs, so that nsenter can enter the correct container
+	}
+
+	result = append(result, extraDockerRunArgs...)
+
+	result = append(result,
 		debugImage,
 		// here, the "nsenter" invocation follows
 		"nsenter",
@@ -23,5 +30,6 @@ func basicDockerRunCommand(fullContainerName, debugImage, pid string) []string {
 		// - by running "mount -t proc proc /proc", we get the proc file system of the TARGET namespace (i.e. the container we want to debug).
 		//   -> at this point, "ps -ef" displays the OTHER processes.
 		"--pid",
-	}
+	)
+	return result
 }

@@ -21,7 +21,16 @@ function build() {
   rm -f ~/.docker/cli-plugins/docker-vscode
   ln -s `pwd`/main ~/.docker/cli-plugins/docker-vscode
 
+  rm -f ~/.docker/cli-plugins/docker-phpprofiler
+  ln -s `pwd`/main ~/.docker/cli-plugins/docker-phpprofiler
+
+
   _log_success "Built and linked binaries"
+}
+
+
+function start-netshoot() {
+  docker run --rm -it nicolaka/netshoot /bin/bash
 }
 
 
