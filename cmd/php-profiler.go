@@ -76,14 +76,14 @@ Install the SPX PHP-Profiler into the given PHP Container, and restarts the PHP 
 
 			dockerExecutablePathAndFilename := findexec.Find("docker", "")
 
-			color.Infoln("")
-			color.Infoln("")
-			color.Info.Prompt("=====================================")
-			color.Info.Prompt("Installing PHP-SPX into the container")
-			color.Info.Prompt("and reloading PHP")
-			color.Info.Prompt("=====================================")
-			color.Infoln("")
-			color.Infoln("")
+			color.Println("")
+			color.Println("")
+			color.Println("<green>=====================================</>")
+			color.Println("<green>Installing PHP-SPX into the container</>")
+			color.Println("<green>and reloading PHP</>")
+			color.Println("<green>=====================================</>")
+			color.Println("")
+			color.Println("")
 			// we need to get the ENV of the original container to find the PHP_INI_DIR (needed such that "docker-php-ext-enable" will work: https://github.com/docker-library/php/blob/67c242cb1529c70a3969a373ab333c53001c95b8/8.2-rc/bullseye/cli/docker-php-ext-enable)
 			envVars, err := util.GetEnvCliCallsForDockerRunFromContainerMetadata(fullContainerName)
 			if err != nil {
@@ -104,15 +104,25 @@ Install the SPX PHP-Profiler into the given PHP Container, and restarts the PHP 
 			c.Stdin = os.Stdin
 			c.Run()
 
-			color.Infoln("")
-			color.Infoln("")
-			color.Info.Prompt("=====================================")
-			color.Info.Prompt("Now, open the SPX Profiler by calling http://your-url/?SPX_UI_URI=/&SPX_KEY=dev")
+			color.Println("")
+			color.Println("")
+			color.Println("<fg=green>=====================================</>")
+			color.Printf("<fg=green;op=bold>Finished installing PHP-SPX into %s</>\n", fullContainerName)
+			color.Println("")
+			color.Println("<fg=green>SPX Profiler URL:</>")
 			hostPorts, _ := util.GetHostPorts(fullContainerName)
 			for _, hostPort := range hostPorts {
-				color.Info.Prompt("=> http://127.0.0.1:%d/?SPX_UI_URI=/&SPX_KEY=dev", hostPort)
+				color.Printf("  - <fg=green;op=bold;>http://127.0.0.1:%d/?SPX_UI_URI=/&SPX_KEY=dev</>\n", hostPort)
 			}
-			color.Info.Prompt("=====================================")
+			color.Println("")
+			color.Println("<fg=green>Profiling CLI requests:</>")
+			color.Println("<fg=green>- </><fg=green;op=bold;>SPX_ENABLED=1</><fg=green> php ...</>")
+			color.Println("<fg=green>    for quick CLI profiling</>")
+			color.Println("<fg=green>- </><fg=green;op=bold;>SPX_ENABLED=1 SPX_FP_LIVE=1</><fg=green> php ...</>")
+			color.Println("<fg=green>    for quick CLI profiling with live redraw</>")
+			color.Println("<fg=green>- </><fg=green;op=bold;>SPX_ENABLED=1 SPX_REPORT=full</><fg=green> php ...</>")
+			color.Println("<fg=green>    for CLI profiling which can be analyzed in the web UI</>")
+			color.Println("<fg=green>=====================================</>")
 		},
 	}
 
