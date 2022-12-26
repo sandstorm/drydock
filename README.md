@@ -1,4 +1,4 @@
-# docker execroot and docker vscode
+# docker execroot, docker vscode, docker phpprofiler extensions for Docker CLI
 
 ## Installation
 
@@ -17,6 +17,9 @@
    
    rm -f ~/.docker/cli-plugins/docker-vscode
    ln -s /usr/local/opt/docker-execroot/share/docker-execroot/docker-execroot ~/.docker/cli-plugins/docker-vscode
+   
+   rm -f ~/.docker/cli-plugins/docker-phpprofiler
+   ln -s /usr/local/opt/docker-execroot/share/docker-execroot/docker-execroot ~/.docker/cli-plugins/docker-phpprofiler
    ```
 
 3. Profit!
@@ -24,6 +27,7 @@
    ```
    docker execroot -h
    docker vscode -h
+   docker phpprofiler -h
    ```
 
 ### `docker execroot myContainer`
@@ -42,6 +46,17 @@
   - Install the [Visual Studio Code Remote - Containers](https://aka.ms/vscode-remote/download/containers) extension
   - Install the command-line `code` launcher [as explained here](https://code.visualstudio.com/docs/setup/mac#_launching-from-the-command-line)
 - You can run `docker vscode [containername]` to launch a connected VS Code instance.
+
+### `docker phpprofiler`
+
+This installs the [PHP-SPX](https://github.com/NoiseByNorthwest/php-spx) profiler into a *running* PHP Application
+in Docker; and outputs usage instructions at the end to get you up and running quickly.
+
+- This works with containers extending from the default Docker Hub [php](https://hub.docker.com/_/php) images,
+  which are also set up to compile PHP extensions.
+- Convenience: You can either specify a container name, or also a `docker-compose` service name.
+- Usage: `docker phpprofiler [containername]` to add PHP-SPX to the running container. 
+
 
 ## Full Usage Instructions
 
@@ -103,6 +118,32 @@ Flags:
   -h, --help   help for vscode
 ```
 
+### `docker phpprofiler SERVICE-OR-CONTAINER`
+
+```
+Install the SPX PHP-Profiler https://github.com/NoiseByNorthwest/php-spx into the given PHP Container, and reloads
+the PHP Process such that the profiler is enabled.
+
+Options:
+      --debug-image          What debugger docker image to use for executing nsenter.
+                             By default, nicolaka/netshoot is used
+
+Examples
+
+Install PHP-SPX Profiler in a PHP container
+	docker phpprofiler myContainer
+
+Install PHP-SPX Profiler in a running docker-compose service
+	docker phpprofiler my-docker-compose-service
+
+Background:
+
+    This command installs the php-spx PHP extension into an existing Docker container, even if the container is locked
+    down to a non-root user. Additionally, we reload the PHP process by using kill -USR2.
+
+    This command is using nsenter wrapped in a privileged docker container to install the PHP extension
+    inside a running container as root.
+```
 
 ## Developing
 

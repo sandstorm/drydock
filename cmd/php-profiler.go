@@ -46,7 +46,29 @@ func buildPhpProfilerCommand() *cobra.Command {
 		Short: "Install SPX PHP-Profiler in the given container",
 		Long: color.Sprintf(`Usage:	docker phpprofiler [flags] SERVICE-OR-CONTAINER
 
-Install the SPX PHP-Profiler into the given PHP Container, and restarts the PHP Process.
+Install the SPX PHP-Profiler https://github.com/NoiseByNorthwest/php-spx into the given PHP Container, and reloads
+the PHP Process such that the profiler is enabled.
+
+<op=underscore;>Options:</>
+      --debug-image          What debugger docker image to use for executing nsenter and git.
+                             By default, nicolaka/netshoot is used 
+
+<op=underscore;>Examples</>
+
+<op=bold;>Install PHP-SPX Profiler in a PHP container</>
+	docker phpprofiler <op=italic;>myContainer</>
+
+<op=bold;>Install PHP-SPX Profiler in a running docker-compose service</>
+	docker phpprofiler <op=italic;>my-docker-compose-service</>
+
+<op=underscore;>Background:</>
+
+    This command installs the php-spx PHP extension into an existing Docker container, even if the container is locked
+    down to a non-root user. Additionally, we reload the PHP process by using kill -USR2.
+
+    This command is using <op=italic;>nsenter</> wrapped in a privileged docker container to install the PHP extension
+    inside a running container as root.
+
 `),
 		Args: cobra.MinimumNArgs(1),
 
