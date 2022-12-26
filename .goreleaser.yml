@@ -71,6 +71,9 @@ brews:
 
             rm -f ~/.docker/cli-plugins/docker-vscode
             ln -s #{pkgshare}/docker-execroot ~/.docker/cli-plugins/docker-vscode
+      
+            rm -f ~/.docker/cli-plugins/docker-phpprofiler
+            ln -s #{pkgshare}/docker-execroot ~/.docker/cli-plugins/docker-phpprofiler
             ---------------------------------------------------------------------------------
           EOS
 
