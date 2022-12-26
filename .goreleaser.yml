@@ -35,7 +35,7 @@ brews:
   -
     name: docker-execroot
 
-    github:
+    tap:
       owner: sandstorm
       name: homebrew-tap
 
