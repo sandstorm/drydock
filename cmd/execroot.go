@@ -79,7 +79,14 @@ Run a command AS ROOT in a running container or docker-compose service.
 
 			dockerExecutablePathAndFilename := findexec.Find("docker", "")
 
-			dockerRunCommand := basicDockerRunCommand(fullContainerName, debugImage, pid, []string{})
+			// we need to get the ENV of the original container, needed such that f.e. "docker-php-ext-enable" will work: https://github.com/docker-library/php/blob/67c242cb1529c70a3969a373ab333c53001c95b8/8.2-rc/bullseye/cli/docker-php-ext-enable
+			envVars, err := util.GetEnvCliCallsForDockerRunFromContainerMetadata(fullContainerName)
+			if err != nil {
+				log.Printf("FATAL: Could not extract env variables for container '%s': %s - THIS SHOULD NOT HAPPEN. Please file a bug report.\n", dockerContainerIdentifier, err)
+				os.Exit(1)
+			}
+
+			dockerRunCommand := basicDockerRunCommand(fullContainerName, debugImage, pid, envVars)
 
 			// OPTIONAL: "mount" does not need to be specified here.
 			// - if leaving it OUT, the file system (and all tooling) is still from the nicolaka/netshoot container.

@@ -24,6 +24,9 @@ function build() {
   rm -f ~/.docker/cli-plugins/docker-phpprofiler
   ln -s `pwd`/main ~/.docker/cli-plugins/docker-phpprofiler
 
+  rm -f ~/.docker/cli-plugins/docker-xdebug
+  ln -s `pwd`/main ~/.docker/cli-plugins/docker-xdebug
+
 
   _log_success "Built and linked binaries"
 }

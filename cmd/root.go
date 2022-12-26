@@ -88,6 +88,7 @@ func Execute(version, commit string) {
 	rootCmd.AddCommand(buildExecRootCmd())
 	rootCmd.AddCommand(buildVsCodeCommand())
 	rootCmd.AddCommand(buildPhpProfilerCommand())
+	rootCmd.AddCommand(buildXdebugCommand())
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)

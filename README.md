@@ -20,6 +20,10 @@
    
    rm -f ~/.docker/cli-plugins/docker-phpprofiler
    ln -s /usr/local/opt/docker-execroot/share/docker-execroot/docker-execroot ~/.docker/cli-plugins/docker-phpprofiler
+
+   rm -f ~/.docker/cli-plugins/docker-xdebug
+   ln -s /usr/local/opt/docker-execroot/share/docker-execroot/docker-execroot ~/.docker/cli-plugins/docker-xdebug
+
    ```
 
 3. Profit!
