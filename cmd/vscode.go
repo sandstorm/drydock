@@ -64,7 +64,7 @@ Open VSCode Remote Containers as root; at path [PATH].
 
 			dockerExecutablePathAndFilename := findexec.Find("docker", "")
 
-			dockerRunCommand := basicDockerRunCommand(fullContainerName, debugImage, pid, []string{})
+			dockerRunCommand := dockerRunNsenterCommand(fullContainerName, debugImage, pid, []string{})
 
 			dockerRunCommand = append(dockerRunCommand, "/bin/bash", "-c", "mkdir /procContainer; mount -t proc proc /procContainer; ln -s /procContainer/1/root /container; chroot /container")
 

@@ -9,16 +9,19 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 )
 
-// phpSpxInstallScript is running in the debugImage (by default nicolaka/netshoot).
+// phpXdebugInstallScript is running in the debugImage (NOTE: we use a different debug image here to support NFS as well.
 //   - we mount the inner container to /container (should be based on some base "official" Docker PHP image)
 //   - we php-spx via Git inside nicolaka/netshoot (because we cannot know if git is installed inside the container)
 //   - then, we compile and install php-spx inside the container. This runs as root, because we use the "execroot" mechanics
 //     (important for the `make install` step).
 //   - reload the config
-const phpXdebugInstallScript = mountSlashContainer + `
+func phpXdebugInstallScript(pid string, nfsMount string) string {
+	script := mountSlashContainer + `
+
 cat << EOF | chroot /container
 	pecl install xdebug
 EOF
@@ -33,10 +36,50 @@ xdebug.max_nesting_level = 2048
 EOF
 
 pkill -USR2 php-fpm
+
 `
 
+	if len(nfsMount) > 0 {
+		script += `
+apt-get update
+apt-get install -y nfs-ganesha nfs-ganesha-vfs
+mkdir /var/run/ganesha
+
+cat << EOF > /etc/ganesha/ganesha.conf
+NFS_CORE_PARAM {
+	## Configure the protocols that Ganesha will listen for.
+	Protocols = 4;
+}
+
+EXPORT
+{
+	## Export Id (mandatory, each EXPORT must have a unique Export_Id)
+	Export_Id = 1;
+	Path = /;
+	Pseudo = /;
+	Access_Type = RW;
+
+	## Whether to squash various users.
+	#Squash = root_squash;
+
+	## Allowed security types for this export
+	#Sectype = sys,krb5,krb5i,krb5p;
+	FSAL {
+		Name = VFS;
+	}
+}
+
+EOF
+
+ganesha.nfsd -F -L /dev/stdout
+`
+	}
+	return script
+}
+
 func buildXdebugCommand() *cobra.Command {
-	var debugImage string = "nicolaka/netshoot"
+	var debugImage string = "ubuntu:kinetic"
+	var nfsMount string = ""
 
 	var phpProfilerCommand = &cobra.Command{
 		Use:   "xdebug [flags] SERVICE-or-CONTAINER",
@@ -47,8 +90,8 @@ Install Xdebug https://xdebug.org into the given PHP Container, and reloads
 the PHP Process such that the debugger is enabled.
 
 <op=underscore;>Options:</>
-      --debug-image          What debugger docker image to use for executing nsenter and git.
-                             By default, nicolaka/netshoot is used 
+      --debug-image          What debugger docker image to use for executing nsenter (and optionally the NFS server).
+                             By default, gists/nfs-server is used
 
 <op=underscore;>Examples</>
 
@@ -71,6 +114,8 @@ the PHP Process such that the debugger is enabled.
 
 		Run: func(cmd *cobra.Command, args []string) {
 			//isOpen := isXdebugPortOpenInIde("127.0.0.1", "9003")
+
+			log.Printf("NFS: %s", nfsMount)
 
 			dockerContainerIdentifier, err := util.TryGetDockerContainerNameFromDockerCompose(args[0])
 
@@ -112,11 +157,18 @@ the PHP Process such that the debugger is enabled.
 				os.Exit(1)
 			}
 
-			// Install PHP-SPX
-			dockerRunCommand := basicDockerRunCommand(fullContainerName, debugImage, pid, envVars)
+			// needed for NFS Server
+			if len(nfsMount) > 0 {
+				envVars = append(envVars, "-p", "2049:2049")
+			}
+			// Image: https://github.com/vgist/dockerfiles/tree/master/nfs-server
+
+			// Install XDEBUG and prepare for NFS Server
+			dockerRunCommand := dockerRunNsenterCommand(fullContainerName, debugImage, pid, envVars)
+			println(strings.Join(dockerRunCommand, " "))
 			dockerRunCommand = append(dockerRunCommand, "/bin/bash")
 			dockerRunCommand = append(dockerRunCommand, "-c")
-			dockerRunCommand = append(dockerRunCommand, phpXdebugInstallScript)
+			dockerRunCommand = append(dockerRunCommand, phpXdebugInstallScript(pid, nfsMount))
 
 			c := exec.Command(dockerExecutablePathAndFilename, dockerRunCommand[1:]...)
 			c.Env = os.Environ()
@@ -171,7 +223,8 @@ the PHP Process such that the debugger is enabled.
 	}
 
 	phpProfilerCommand.Flags().SetInterspersed(false)
-	phpProfilerCommand.Flags().StringVarP(&debugImage, "debug-image", "", "nicolaka/netshoot", "What debugger docker image to use for executing nsenter. By default, nicolaka/netshoot is used")
+	phpProfilerCommand.Flags().StringVarP(&debugImage, "debug-image", "", "ubuntu:kinetic", "What debugger docker image to use for executing nsenter. By default, gists/nfs-server is used")
+	phpProfilerCommand.Flags().StringVarP(&nfsMount, "nfs", "", "", "What NFS ")
 
 	return phpProfilerCommand
 }

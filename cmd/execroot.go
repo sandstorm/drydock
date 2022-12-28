@@ -86,7 +86,7 @@ Run a command AS ROOT in a running container or docker-compose service.
 				os.Exit(1)
 			}
 
-			dockerRunCommand := basicDockerRunCommand(fullContainerName, debugImage, pid, envVars)
+			dockerRunCommand := dockerRunNsenterCommand(fullContainerName, debugImage, pid, envVars)
 
 			// OPTIONAL: "mount" does not need to be specified here.
 			// - if leaving it OUT, the file system (and all tooling) is still from the nicolaka/netshoot container.

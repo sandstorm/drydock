@@ -114,7 +114,7 @@ the PHP Process such that the profiler is enabled.
 			}
 
 			// Install PHP-SPX
-			dockerRunCommand := basicDockerRunCommand(fullContainerName, debugImage, pid, envVars)
+			dockerRunCommand := dockerRunNsenterCommand(fullContainerName, debugImage, pid, envVars)
 			dockerRunCommand = append(dockerRunCommand, "/bin/bash")
 			dockerRunCommand = append(dockerRunCommand, "-c")
 			dockerRunCommand = append(dockerRunCommand, phpSpxInstallScript)

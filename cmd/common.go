@@ -2,7 +2,15 @@ package cmd
 
 const mountSlashContainer = "mount -t proc proc /proc; ln -s /proc/1/root /container;"
 
-func basicDockerRunCommand(fullContainerName, debugImage, pid string, extraDockerRunArgs []string) []string {
+func dockerRunNsenterCommand(fullContainerName, debugImage, pid string, extraDockerRunArgs []string) []string {
+	result := dockerRunCommand(fullContainerName, debugImage, extraDockerRunArgs)
+	result = append(result,
+		nsenterCommand(pid)...,
+	)
+	return result
+}
+
+func dockerRunCommand(fullContainerName, debugImage string, extraDockerRunArgs []string) []string {
 	result := []string{
 		"docker", "run",
 		"--rm", // ephemeral container
@@ -17,7 +25,12 @@ func basicDockerRunCommand(fullContainerName, debugImage, pid string, extraDocke
 
 	result = append(result,
 		debugImage,
-		// here, the "nsenter" invocation follows
+	)
+	return result
+}
+
+func nsenterCommand(pid string) []string {
+	return []string{
 		"nsenter",
 		"--target", pid, // we want to attach to the found target PID
 		// we want to share the network namespace. This means you can e.g. use `curl` like in the debugged application,
@@ -30,6 +43,5 @@ func basicDockerRunCommand(fullContainerName, debugImage, pid string, extraDocke
 		// - by running "mount -t proc proc /proc", we get the proc file system of the TARGET namespace (i.e. the container we want to debug).
 		//   -> at this point, "ps -ef" displays the OTHER processes.
 		"--pid",
-	)
-	return result
+	}
 }
