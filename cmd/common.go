@@ -18,7 +18,8 @@ func dockerRunCommand(fullContainerName, debugImage string, extraDockerRunArgs [
 		"--name",
 		fullContainerName + "_DEBUG",
 		"--privileged", // we need privileged permissions to run nsenter (namespace enter), to enter the other container
-		"--pid=host",   // we need to see the *hosts* PIDs, so that nsenter can enter the correct container
+		"--cap-add=all",
+		"--pid=host", // we need to see the *hosts* PIDs, so that nsenter can enter the correct container
 	}
 
 	result = append(result, extraDockerRunArgs...)

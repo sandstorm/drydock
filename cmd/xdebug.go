@@ -43,12 +43,18 @@ pkill -USR2 php-fpm
 		script += `
 apt-get update
 apt-get install -y nfs-ganesha nfs-ganesha-vfs
+
 mkdir /var/run/ganesha
 
 cat << EOF > /etc/ganesha/ganesha.conf
 NFS_CORE_PARAM {
 	## Configure the protocols that Ganesha will listen for.
 	Protocols = 4;
+}
+
+NFS_KRB5
+{
+	Active_krb5 = false;
 }
 
 EXPORT
@@ -62,15 +68,24 @@ EXPORT
 	## Whether to squash various users.
 	#Squash = root_squash;
 
-	## Allowed security types for this export
-	#Sectype = sys,krb5,krb5i,krb5p;
+
+	## Allowed security types for this export (maybe "sys")
+	Sectype = sys;
 	FSAL {
 		Name = VFS;
 	}
 }
 
+LOG {
+	COMPONENTS {
+		FSAL = FULL_DEBUG;
+	}
+}
 EOF
 
+// /bin/bash
+
+dbus-daemon --config-file=/usr/share/dbus-1/system.conf
 ganesha.nfsd -F -L /dev/stdout
 `
 	}
@@ -151,11 +166,12 @@ the PHP Process such that the debugger is enabled.
 			color.Println("")
 			color.Println("")
 			// we need to get the ENV of the original container to find the PHP_INI_DIR (needed such that "docker-php-ext-enable" will work: https://github.com/docker-library/php/blob/67c242cb1529c70a3969a373ab333c53001c95b8/8.2-rc/bullseye/cli/docker-php-ext-enable)
-			envVars, err := util.GetEnvCliCallsForDockerRunFromContainerMetadata(fullContainerName)
+			/*envVars, err := util.GetEnvCliCallsForDockerRunFromContainerMetadata(fullContainerName)
 			if err != nil {
 				log.Printf("FATAL: Could not extract env variables for container '%s': %s - THIS SHOULD NOT HAPPEN. Please file a bug report.\n", dockerContainerIdentifier, err)
 				os.Exit(1)
-			}
+			}*/
+			envVars := []string{}
 
 			// needed for NFS Server
 			if len(nfsMount) > 0 {
