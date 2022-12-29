@@ -17,10 +17,15 @@ import (
 //     (important for the `make install` step).
 //   - reload the config
 const phpSpxInstallScript = mountSlashContainer + `
-git clone --branch release/latest https://github.com/NoiseByNorthwest/php-spx.git /container/php-spx
+
+rm -Rf /container/php-spx /php-spx
+git clone --branch release/latest https://github.com/NoiseByNorthwest/php-spx.git /php-spx
+mv /php-spx /container
+
 
 cat << EOF | chroot /container
 	cd /php-spx
+	ls -lisah
 	phpize
 	./configure
 	make
