@@ -1,8 +1,8 @@
 - [Getting started](README.md)
-- [execroot](execroot.md)
-- [vscode](vscode.md)
-- [spx](spx.md)
-- [xdebug](xdebug.md)
+- [drydock execroot](execroot.md)
+- [drydock vscode](vscode.md)
+- [drydock spx](spx.md)
+- [drydock xdebug](xdebug.md)
 - [Architecture](architecture.md)
 ---
 
