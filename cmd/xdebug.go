@@ -14,7 +14,6 @@ import (
 	"os/signal"
 	"runtime"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -29,7 +28,7 @@ func convertToTopLevelExport(exportedPath string) string {
 //     (important for the `make install` step).
 //   - reload the config
 func phpXdebugInstallScript(pid string, extraMountFolders string) string {
-	script := mountSlashContainer + `
+	return mountSlashContainer + `
 cat << EOF | chroot /container
 	pecl install xdebug
 EOF
@@ -43,9 +42,12 @@ xdebug.discover_client_host = true
 xdebug.max_nesting_level = 2048
 EOF
 
+echo "restarting php-fpm"
 pkill -USR2 php-fpm
 `
+}
 
+func phpXdebugMountScript(extraMountFolders string) string {
 	if len(extraMountFolders) > 0 {
 		var davExports []string
 		for _, extraMountFolder := range strings.Split(extraMountFolders, ",") {
@@ -53,7 +55,7 @@ pkill -USR2 php-fpm
 			davExports = append(davExports, fmt.Sprintf("/%s,/container/%s,null,null,false", convertToTopLevelExport(extraMountFolder), extraMountFolder))
 		}
 
-		script += `
+		return mountSlashContainer + `
 curl -L -o /bin/gowebdav https://github.com/117503445/GoWebDAV/releases/download/1.3.5/gowebdav_linux_` + runtime.GOARCH + `
 chmod +x /bin/gowebdav
 
@@ -61,7 +63,7 @@ echo "Starting webdav server for extra mounts on  ` + extraMountFolders + `"
 /bin/gowebdav --dav "` + strings.Join(davExports, ";") + `"
 `
 	}
-	return script
+	return ""
 }
 
 func phpXdebugDeactivateScript() string {
@@ -75,25 +77,31 @@ func buildXdebugCommand() *cobra.Command {
 	var debugImage string = "nicolaka/netshoot"
 	var extraMountFolders string = ""
 
-	var phpProfilerCommand = &cobra.Command{
+	var command = &cobra.Command{
 		Use:   "xdebug [flags] SERVICE-or-CONTAINER",
-		Short: "Install Xdebug in the given container",
+		Short: "Run Xdebug in the given container",
 		Long: color.Sprintf(`Usage:	docker xdebug [flags] SERVICE-OR-CONTAINER
 
-Install Xdebug https://xdebug.org into the given PHP Container, and reloads
+Run Xdebug https://xdebug.org in the given PHP Container, and reloads
 the PHP Process such that the debugger is enabled.
 
 <op=underscore;>Options:</>
-      --debug-image          What debugger docker image to use for executing nsenter (and optionally the NFS server).
-                             By default, gists/nfs-server is used
+      --debug-image          What debugger docker image to use for executing nsenter (and optionally the NFS webdav server).
+                             By default, nicolaka/netshoot is used
+      --mount                Extra mounts which should be mounted from the container to the host via webdav. 
+                             This is useful to be able to f.e. debug into non-mounted files (like other packages
+                             in Neos/Flow applications)
 
 <op=underscore;>Examples</>
 
-<op=bold;>Install Xdebug in a PHP container</>
+<op=bold;>Run Xdebug in a running PHP container</>
 	docker xdebug <op=italic;>myContainer</>
 
-<op=bold;>Install Xdebug in a running docker-compose service</>
+<op=bold;>Run Xdebug in a running docker-compose service</>
 	docker xdebug <op=italic;>my-docker-compose-service</>
+
+<op=bold;>Run Xdebug a Neos/Flow Application</>
+	docker xdebug <op=italic;>my-docker-compose-service</> --mount=app/Data/Temporary,Packages 
 
 <op=underscore;>Background:</>
 
@@ -151,7 +159,7 @@ the PHP Process such that the debugger is enabled.
 			dockerExecutablePathAndFilename := findexec.Find("docker", "")
 
 			// we need to get the ENV of the original container to find the PHP_INI_DIR (needed such that "docker-php-ext-enable" will work: https://github.com/docker-library/php/blob/67c242cb1529c70a3969a373ab333c53001c95b8/8.2-rc/bullseye/cli/docker-php-ext-enable)
-			envVars, err := util.GetEnvCliCallsForDockerRunFromContainerMetadata(fullContainerName)
+			extraDockerRunArgs, err := util.GetEnvCliCallsForDockerRunFromContainerMetadata(fullContainerName)
 			if err != nil {
 				log.Printf("FATAL: Could not extract env variables for container '%s': %s - THIS SHOULD NOT HAPPEN. Please file a bug report.\n", dockerContainerIdentifier, err)
 				os.Exit(1)
@@ -159,35 +167,45 @@ the PHP Process such that the debugger is enabled.
 
 			if len(extraMountFolders) > 0 {
 				// needed for WebDav Server to extraMountFolder the extra files
-				envVars = append(envVars, "-p", "19889:80")
+				extraDockerRunArgs = append(extraDockerRunArgs, "-p", "19889:80")
 			}
 			// Image: https://github.com/vgist/dockerfiles/tree/master/nfs-server
 
-			// Install XDEBUG and prepare for NFS Server
-			dockerRunCommand := dockerRunNsenterCommand(fullContainerName, debugImage, pid, envVars)
+			// Install XDEBUG
+			dockerRunCommand := dockerRunNsenterCommand(fullContainerName, debugImage, pid, extraDockerRunArgs)
+			dockerRunCommand = append(dockerRunCommand, "--net") // to download files now, we need to mount the network filesystem.
 			dockerRunCommand = append(dockerRunCommand, "/bin/bash")
 			dockerRunCommand = append(dockerRunCommand, "-c")
 			dockerRunCommand = append(dockerRunCommand, phpXdebugInstallScript(pid, extraMountFolders))
-
-			var dockerRunWg sync.WaitGroup
-			dockerRunWg.Add(1)
 
 			dockerRunC := exec.Command(dockerExecutablePathAndFilename, dockerRunCommand[1:]...)
 			dockerRunC.Env = os.Environ()
 			dockerRunC.Stdout = os.Stdout
 			dockerRunC.Stderr = os.Stderr
+			dockerRunC.Run()
 
-			go func() {
-				dockerRunC.Run()
-				dockerRunWg.Done()
-			}()
+			c := make(chan os.Signal, 1)
+			signal.Notify(c, os.Interrupt)
 
 			if len(extraMountFolders) > 0 {
+				// Install XDEBUG
+				dockerRunCommand := dockerRunNsenterCommand(fullContainerName, debugImage, pid, extraDockerRunArgs)
+				//
+				dockerRunCommand = append(dockerRunCommand, "/bin/bash")
+				dockerRunCommand = append(dockerRunCommand, "-c")
+				dockerRunCommand = append(dockerRunCommand, phpXdebugMountScript(extraMountFolders))
+
+				dockerRunC := exec.Command(dockerExecutablePathAndFilename, dockerRunCommand[1:]...)
+				dockerRunC.Env = os.Environ()
+				dockerRunC.Stdout = os.Stdout
+				dockerRunC.Stderr = os.Stderr
+				dockerRunC.Start()
+
 				err = waitUntilWebdavIsRunning()
 				color.Println("")
 				color.Println("")
 				color.Println("<green>=====================================</>")
-				color.Printf("<green>Trying to mount </><fg=green;op=bold;>%s</><green>via WebDAV</>\n", extraMountFolders)
+				color.Printf("<green>Trying to mount </><fg=green;op=bold;>%s</><green> via WebDAV</>\n", extraMountFolders)
 				color.Println("<green>=====================================</>")
 				color.Println("")
 
@@ -222,15 +240,10 @@ the PHP Process such that the debugger is enabled.
 						os.Exit(1)
 					}
 				}
-			} else {
-				dockerRunC.Wait()
-			}
 
-			go func() {
-				c := make(chan os.Signal, 1)
-				signal.Notify(c, os.Interrupt)
+				printXdebugUsage(fullContainerName)
 
-				// wait for ctr-c
+				// wait for ctrl-c
 				<-c
 
 				color.Println("<fg=yellow>Ctrl-C pressed. Aborting...</>")
@@ -246,53 +259,7 @@ the PHP Process such that the debugger is enabled.
 				stopC.Stdout = os.Stdout
 				stopC.Stderr = os.Stderr
 				stopC.Run()
-			}()
 
-			color.Println("")
-			color.Println("")
-			color.Println("<fg=green>=====================================</>")
-			color.Printf("<fg=green;op=bold>Xdebug fully set up for %s</>\n", fullContainerName)
-			color.Println("")
-			color.Println("<fg=green>~~ Debugging Web Requests ~~</>")
-			color.Println("")
-			color.Println("<fg=green>- </><fg=green;op=bold;>xdebug_break()</>")
-			color.Println("<fg=green>  in PHP code to set a breakpoint (recommended for Neos/Flow)</>")
-			color.Println("<fg=green>- http://your-url-here/</><fg=green;op=bold;>?XDEBUG_SESSION=1</>")
-			color.Println("<fg=green>  in your HTTP request to debug a single request</>")
-			color.Println("<fg=green>- http://your-url-here/</><fg=green;op=bold;>?XDEBUG_SESSION_START=1</>")
-			color.Println("<fg=green>  in your HTTP request to debug all requests in this session</>")
-			color.Println("<fg=green>  (stop with XDEBUG_SESSION_STOP=1)</>")
-			color.Println("")
-			color.Println("<fg=green>~~ Debugging CLI requests ~~</>")
-			color.Println("")
-			color.Println("<fg=green>- </><fg=green;op=bold;>XDEBUG_SESSION=1</><fg=green> php ...</>")
-			color.Println("<fg=green>  for CLI step Debugging</>")
-			color.Println("")
-			color.Println("<fg=green>~~ Set up PHPStorm/IntelliJ ~~</>")
-			color.Println("<fg=green>- </><fg=green;op=bold;>Run -> Start Listening for PHP Debug Connections</>")
-			color.Println("<fg=green>  needs to be enabled; otherwise connection to the IDE does not work.</>")
-			color.Println("<fg=green>- You need to set up </><fg=green;op=bold;>path mappings</><fg=green> correctly, otherwise you cannot navigate</>")
-			color.Println("<fg=green>  to the files in the IDE when a breakpoint is hit. This can be done as follows:</>")
-			color.Println("")
-			color.Println("<fg=green>  When a breakpoint is hit:</>")
-			color.Println("<fg=green>     Debug Panel -> Threads&Variables</>")
-			color.Println("<fg=green>     -> </><fg=green;op=bold;>Click to set up path mappings</>")
-			color.Println("<fg=green>  When the path mapping is wrongly configured and you need to correct it:</>")
-			color.Println("<fg=green>     Settings</>")
-			color.Println("<fg=green>     -> Languages&Frameworks -> PHP -> Server</>")
-			color.Println("<fg=green>     -> (add server if needed)</>")
-			color.Println("<fg=green>     -> </><fg=green;op=bold;>Use Path Mappings</>")
-			color.Println("")
-			color.Println("<fg=green>~~ Debugging Neos/Flow ~~</>")
-			color.Println("<fg=green>For debugging Neos/Flow, run with </><fg=green;op=bold;>--mount Data/Temporary,Packages</><fg=green>, because this</>")
-			color.Println("<fg=green>allows to edit all files in the IDE.</>")
-			color.Println("<fg=green>=====================================</>")
-			color.Println("")
-			color.Println("<fg=yellow>To stop debugging, </><fg=yellow;op=bold>press Ctrl-C</>")
-
-			dockerRunWg.Wait()
-
-			if extraMountFolders != "" {
 				color.Println("")
 				color.Println("")
 				color.Println("<green>=====================================</>")
@@ -320,7 +287,11 @@ the PHP Process such that the debugger is enabled.
 					umountC.Stdin = os.Stdin
 					umountC.Run()
 				}
-
+			} else {
+				printXdebugUsage(fullContainerName)
+				// wait for ctrl-c
+				<-c
+				color.Println("<fg=yellow>Ctrl-C pressed. Aborting...</>")
 			}
 
 			color.Println("<green>=====================================</>")
@@ -329,7 +300,7 @@ the PHP Process such that the debugger is enabled.
 			color.Println("")
 			// Removing XDebug
 			// Install XDEBUG and prepare for NFS Server
-			dockerRunCommand = dockerRunNsenterCommand(fullContainerName, debugImage, pid, envVars)
+			dockerRunCommand = dockerRunNsenterCommand(fullContainerName, debugImage, pid, extraDockerRunArgs)
 			dockerRunCommand = append(dockerRunCommand, "/bin/bash")
 			dockerRunCommand = append(dockerRunCommand, "-c")
 			dockerRunCommand = append(dockerRunCommand, phpXdebugDeactivateScript())
@@ -348,10 +319,56 @@ the PHP Process such that the debugger is enabled.
 		},
 	}
 
-	phpProfilerCommand.Flags().StringVarP(&debugImage, "debug-image", "", "nicolaka/netshoot", "What debugger docker image to use for executing nsenter. By default, gists/nfs-server is used")
-	phpProfilerCommand.Flags().StringVarP(&extraMountFolders, "mount", "", "", "What additional folders to mount via webdav")
+	command.Flags().StringVarP(&debugImage, "debug-image", "", "nicolaka/netshoot", "What debugger docker image to use for executing nsenter. By default, gists/nfs-server is used")
+	command.Flags().StringVarP(&extraMountFolders, "mount", "", "", "What additional folders to mount via webdav")
 
-	return phpProfilerCommand
+	return command
+}
+
+func printXdebugUsage(fullContainerName string) {
+	color.Println("")
+	color.Println("")
+	color.Println("<fg=green>=====================================</>")
+	color.Printf("<fg=green;op=bold>Xdebug fully set up for %s</>\n", fullContainerName)
+	color.Println("")
+	color.Println("<fg=green>~~ Debugging Web Requests ~~</>")
+	color.Println("")
+	color.Println("<fg=green>- </><fg=green;op=bold;>xdebug_break()</>")
+	color.Println("<fg=green>  in PHP code to set a breakpoint (recommended for Neos/Flow)</>")
+	color.Println("<fg=green>- http://your-url-here/</><fg=green;op=bold;>?XDEBUG_SESSION=1</>")
+	color.Println("<fg=green>  in your HTTP request to debug a single request</>")
+	color.Println("<fg=green>- http://your-url-here/</><fg=green;op=bold;>?XDEBUG_SESSION_START=1</>")
+	color.Println("<fg=green>  in your HTTP request to debug all requests in this session</>")
+	color.Println("<fg=green>  (stop with XDEBUG_SESSION_STOP=1)</>")
+	color.Println("")
+	color.Println("<fg=green>~~ Debugging CLI requests ~~</>")
+	color.Println("")
+	color.Println("<fg=green>- </><fg=green;op=bold;>XDEBUG_SESSION=1</><fg=green> php ...</>")
+	color.Println("<fg=green>  for CLI step Debugging</>")
+	color.Println("")
+	color.Println("<fg=green>~~ Set up PHPStorm/IntelliJ ~~</>")
+	color.Println("<fg=green>- </><fg=green;op=bold;>Run -> Start Listening for PHP Debug Connections</>")
+	color.Println("<fg=green>  needs to be enabled; otherwise connection to the IDE does not work.</>")
+	color.Println("<fg=green>- You need to set up </><fg=green;op=bold;>path mappings</><fg=green> correctly, otherwise you cannot navigate</>")
+	color.Println("<fg=green>  to the files in the IDE when a breakpoint is hit. This can be done as follows:</>")
+	color.Println("")
+	color.Println("<fg=green>  When a breakpoint is hit:</>")
+	color.Println("<fg=green>     Debug Panel -> Threads&Variables</>")
+	color.Println("<fg=green>     -> </><fg=green;op=bold;>Click to set up path mappings</>")
+	color.Println("<fg=green>  When the path mapping is wrongly configured and you need to correct it:</>")
+	color.Println("<fg=green>     Settings</>")
+	color.Println("<fg=green>     -> Languages&Frameworks -> PHP -> Server</>")
+	color.Println("<fg=green>     -> (add server if needed)</>")
+	color.Println("<fg=green>     -> </><fg=green;op=bold;>Use Path Mappings</>")
+	color.Println("")
+	color.Println("<fg=green>~~ Debugging Neos/Flow ~~</>")
+	color.Println("<fg=green>For debugging Neos/Flow, run with </><fg=green;op=bold;>--mount app/Data/Temporary,app/Packages</><fg=green>, because this</>")
+	color.Println("<fg=green>allows to edit all files in the IDE.</>")
+	color.Println("")
+	color.Println("<fg=green>Additionally, enable Power Save Mode in IntelliJ to stop reindexing.</>")
+	color.Println("<fg=green>=====================================</>")
+	color.Println("")
+	color.Println("<fg=yellow>To stop debugging, </><fg=yellow;op=bold>press Ctrl-C</>")
 }
 
 func waitUntilWebdavIsRunning() error {
