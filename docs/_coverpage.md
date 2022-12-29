@@ -2,11 +2,10 @@
 
 > Docker Debugging Tools
 
-- `drydock execroot`: Like `docker exec`, but *always* spawn a root shell
-- `drydock vscode`: Open Visual Studio Code (with the [Containers extension](https://aka.ms/vscode-remote/download/containers)),
-  allowing to edit any file as root
-- `drydock spx`: Install and enable the [SPX Profiler](https://github.com/NoiseByNorthwest/php-spx) PHP extension
-  into a running container (without restart).
+- `drydock execroot`: docker exec, *always as root*
+- `drydock vscode`: Open Visual Studio Code to edit *any file*
+- `drydock spx`: Install the **PHP SPX Profiler** into a running container.
+- `drydock xdebug`: Install the **PHP Xdebug debugger** into a running container.
 
 * **Portable** written in Golang with no external dependencies. Install by downloading a single binary.
 
