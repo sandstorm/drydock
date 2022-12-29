@@ -26,25 +26,10 @@ We have tested the tools in OSX. They also can work on other platforms, but were
    brew install sandstorm/tap/drydock
    ```
 
-2. (Optional) Register as Docker plugin.
-
-   You can use `drydock` as standalone executable. If you find it more convenient as `docker` subcommands (i.e.
-   `docker execroot` instead of `drydock execroot`, you can run the following commands to set up docker plugin symlinks:
+2. Done :)
 
    ```bash
-   mkdir -p ~/.docker/cli-plugins
-   rm -f ~/.docker/cli-plugins/docker-execroot
-   ln -s $(brew --prefix)/opt/drydock/share/drydock/drydock ~/.docker/cli-plugins/docker-execroot
-   
-   rm -f ~/.docker/cli-plugins/docker-vscode
-   ln -s $(brew --prefix)/opt/drydock/share/drydock/drydock ~/.docker/cli-plugins/docker-vscode
-   
-   rm -f ~/.docker/cli-plugins/docker-phpprofiler
-   ln -s $(brew --prefix)/opt/drydock/share/drydock/drydock ~/.docker/cli-plugins/docker-phpprofiler
-
-   rm -f ~/.docker/cli-plugins/docker-xdebug
-   ln -s $(brew --prefix)/opt/drydock/share/drydock/drydock ~/.docker/cli-plugins/docker-xdebug
-
+   drydock --help  
    ```
 
 ## Documentation

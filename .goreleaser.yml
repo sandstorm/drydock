@@ -64,34 +64,6 @@ brews:
     # Default is empty.
     description: "Drydock - Docker Debug Tools"
 
-    custom_block: |
-      def caveats
-        caveats =
-          <<~EOS
-
-            You can use "drydock" as standalone executable. If you find it more convenient as docker subcommands (i.e.
-            "docker execroot" instead of "drydock execroot", you can run the following commands to set up
-            docker plugin symlinks:
-
-            ---------------------------------------------------------------------------------
-            mkdir -p ~/.docker/cli-plugins
-            rm -f ~/.docker/cli-plugins/docker-execroot
-            ln -s #{pkgshare}/drydock ~/.docker/cli-plugins/docker-execroot
-
-            rm -f ~/.docker/cli-plugins/docker-vscode
-            ln -s #{pkgshare}/drydock ~/.docker/cli-plugins/docker-vscode
-      
-            rm -f ~/.docker/cli-plugins/docker-phpprofiler
-            ln -s #{pkgshare}/drydock ~/.docker/cli-plugins/docker-phpprofiler
-
-            rm -f ~/.docker/cli-plugins/docker-xdebug
-            ln -s #{pkgshare}/drydock ~/.docker/cli-plugins/docker-xdebug
-            ---------------------------------------------------------------------------------
-          EOS
-
-        caveats
-      end
-
     install: |
       libexec.install Dir["*"]
       bin.write_exec_script libexec/"drydock"
