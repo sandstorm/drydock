@@ -1,6 +1,13 @@
 env_files:
   github_token: ~/.config/goreleaser/github_token
 
+project_name: drydock
+release:
+  github:
+    owner: sandstorm
+    name: drydock
+  name_template: '{{.Tag}}'
+
 before:
   hooks:
     - go mod download
