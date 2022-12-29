@@ -93,4 +93,5 @@ brews:
       end
 
     install: |
-      pkgshare.install Dir["*"]
+      libexec.install Dir["*"]
+      bin.write_exec_script libexec/"drydock"
