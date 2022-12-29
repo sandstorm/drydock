@@ -1,4 +1,4 @@
-module github.com/sandstorm/docker-execroot
+module github.com/sandstorm/drydock
 
 go 1.15
 

@@ -33,7 +33,7 @@ changelog:
 
 brews:
   -
-    name: docker-execroot
+    name: drydock
 
     tap:
       owner: sandstorm
@@ -51,32 +51,34 @@ brews:
 
     # Your app's homepage.
     # Default is empty.
-    homepage: "https://github.com/sandstorm/docker-execroot"
+    homepage: "https://github.com/sandstorm/drydock"
 
     # Your app's description.
     # Default is empty.
-    description: "Sandstorm Docker Debug Tools"
+    description: "Drydock - Docker Debug Tools"
 
     custom_block: |
       def caveats
         caveats =
           <<~EOS
 
-            !!! Please run the following commands to finish installing the docker-execroot plugin:
+            You can use "drydock" as standalone executable. If you find it more convenient as docker subcommands (i.e.
+            "docker execroot" instead of "drydock execroot", you can run the following commands to set up
+            docker plugin symlinks:
 
             ---------------------------------------------------------------------------------
             mkdir -p ~/.docker/cli-plugins
             rm -f ~/.docker/cli-plugins/docker-execroot
-            ln -s #{pkgshare}/docker-execroot ~/.docker/cli-plugins/docker-execroot
+            ln -s #{pkgshare}/drydock ~/.docker/cli-plugins/docker-execroot
 
             rm -f ~/.docker/cli-plugins/docker-vscode
-            ln -s #{pkgshare}/docker-execroot ~/.docker/cli-plugins/docker-vscode
+            ln -s #{pkgshare}/drydock ~/.docker/cli-plugins/docker-vscode
       
             rm -f ~/.docker/cli-plugins/docker-phpprofiler
-            ln -s #{pkgshare}/docker-execroot ~/.docker/cli-plugins/docker-phpprofiler
+            ln -s #{pkgshare}/drydock ~/.docker/cli-plugins/docker-phpprofiler
 
             rm -f ~/.docker/cli-plugins/docker-xdebug
-            ln -s #{pkgshare}/docker-execroot ~/.docker/cli-plugins/docker-xdebug
+            ln -s #{pkgshare}/drydock ~/.docker/cli-plugins/docker-xdebug
             ---------------------------------------------------------------------------------
           EOS
 

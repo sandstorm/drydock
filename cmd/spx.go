@@ -3,7 +3,7 @@ package cmd
 import (
 	"github.com/gookit/color"
 	"github.com/jonhadfield/findexec"
-	"github.com/sandstorm/docker-execroot/util"
+	"github.com/sandstorm/drydock/util"
 	"github.com/spf13/cobra"
 	"log"
 	"os"
@@ -38,13 +38,13 @@ EOF
 pkill -USR2 php-fpm
 `
 
-func buildPhpProfilerCommand() *cobra.Command {
+func buildSpxCommand() *cobra.Command {
 	var debugImage string = "nicolaka/netshoot"
 
 	var phpProfilerCommand = &cobra.Command{
-		Use:   "phpprofiler [flags] SERVICE-or-CONTAINER",
+		Use:   "spx [flags] SERVICE-or-CONTAINER",
 		Short: "Install SPX PHP-Profiler in the given container",
-		Long: color.Sprintf(`Usage:	docker phpprofiler [flags] SERVICE-OR-CONTAINER
+		Long: color.Sprintf(`Usage:	drydock spx [flags] SERVICE-OR-CONTAINER
 
 Install the SPX PHP-Profiler https://github.com/NoiseByNorthwest/php-spx into the given PHP Container, and reloads
 the PHP Process such that the profiler is enabled.
@@ -56,10 +56,10 @@ the PHP Process such that the profiler is enabled.
 <op=underscore;>Examples</>
 
 <op=bold;>Install PHP-SPX Profiler in a PHP container</>
-	docker phpprofiler <op=italic;>myContainer</>
+	drydock spx <op=italic;>myContainer</>
 
 <op=bold;>Install PHP-SPX Profiler in a running docker-compose service</>
-	docker phpprofiler <op=italic;>my-docker-compose-service</>
+	drydock spx <op=italic;>my-docker-compose-service</>
 
 <op=underscore;>Background:</>
 
@@ -70,7 +70,7 @@ the PHP Process such that the profiler is enabled.
     inside a running container as root.
 
 `),
-		Args: cobra.MinimumNArgs(1),
+		Args: cobra.ExactArgs(1),
 
 		Run: func(cmd *cobra.Command, args []string) {
 			dockerContainerIdentifier, err := util.TryGetDockerContainerNameFromDockerCompose(args[0])
@@ -148,7 +148,6 @@ the PHP Process such that the profiler is enabled.
 		},
 	}
 
-	phpProfilerCommand.Flags().SetInterspersed(false)
 	phpProfilerCommand.Flags().StringVarP(&debugImage, "debug-image", "", "nicolaka/netshoot", "What debugger docker image to use for executing nsenter. By default, nicolaka/netshoot is used")
 
 	return phpProfilerCommand

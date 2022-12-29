@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/gookit/color"
 	"github.com/jonhadfield/findexec"
-	"github.com/sandstorm/docker-execroot/util"
+	"github.com/sandstorm/drydock/util"
 	"github.com/spf13/cobra"
 	"log"
 	"os"
@@ -64,7 +64,12 @@ Open VSCode Remote Containers as root; at path [PATH].
 
 			dockerExecutablePathAndFilename := findexec.Find("docker", "")
 
-			dockerRunCommand := dockerRunNsenterCommand(fullContainerName, debugImage, pid, []string{})
+			dockerRunCommand := dockerRunNsenterCommand(fullContainerName, debugImage, pid, []string{
+				"-it", // interactive, with TTY
+			})
+			// we want to share the network namespace. This means you can e.g. use `curl` like in the debugged application,
+			// using "127.0.0.1:[yourport]" as usual.
+			dockerRunCommand = append(dockerRunCommand, "--net")
 
 			dockerRunCommand = append(dockerRunCommand, "/bin/bash", "-c", "mkdir /procContainer; mount -t proc proc /procContainer; ln -s /procContainer/1/root /container; chroot /container")
 

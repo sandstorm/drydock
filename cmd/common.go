@@ -14,12 +14,10 @@ func dockerRunCommand(fullContainerName, debugImage string, extraDockerRunArgs [
 	result := []string{
 		"docker", "run",
 		"--rm", // ephemeral container
-		"-it",  // interactive, with TTY
 		"--name",
 		fullContainerName + "_DEBUG",
 		"--privileged", // we need privileged permissions to run nsenter (namespace enter), to enter the other container
-		"--cap-add=all",
-		"--pid=host", // we need to see the *hosts* PIDs, so that nsenter can enter the correct container
+		"--pid=host",   // we need to see the *hosts* PIDs, so that nsenter can enter the correct container
 	}
 
 	result = append(result, extraDockerRunArgs...)
@@ -34,9 +32,6 @@ func nsenterCommand(pid string) []string {
 	return []string{
 		"nsenter",
 		"--target", pid, // we want to attach to the found target PID
-		// we want to share the network namespace. This means you can e.g. use `curl` like in the debugged application,
-		// using "127.0.0.1:[yourport]" as usual.
-		"--net",
 		// IPC seems necessary, but not 100% sure why.
 		"--ipc",
 		// we want to share the PID namespace. This means:

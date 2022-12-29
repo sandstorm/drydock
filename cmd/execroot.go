@@ -3,7 +3,7 @@ package cmd
 import (
 	"github.com/gookit/color"
 	"github.com/jonhadfield/findexec"
-	"github.com/sandstorm/docker-execroot/util"
+	"github.com/sandstorm/drydock/util"
 	"github.com/spf13/cobra"
 	"log"
 	"os"
@@ -86,7 +86,12 @@ Run a command AS ROOT in a running container or docker-compose service.
 				os.Exit(1)
 			}
 
+			envVars = append(envVars, "-it") // interactive, with TTY
+
 			dockerRunCommand := dockerRunNsenterCommand(fullContainerName, debugImage, pid, envVars)
+			// we want to share the network namespace. This means you can e.g. use `curl` like in the debugged application,
+			// using "127.0.0.1:[yourport]" as usual.
+			dockerRunCommand = append(dockerRunCommand, "--net")
 
 			// OPTIONAL: "mount" does not need to be specified here.
 			// - if leaving it OUT, the file system (and all tooling) is still from the nicolaka/netshoot container.

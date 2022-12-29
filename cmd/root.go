@@ -33,7 +33,7 @@ import (
 var cfgFile string
 
 var rootCmd = &cobra.Command{
-	Use: "docker",
+	Use: "drydock",
 }
 
 type VSCodeAttachedContainerT struct {
@@ -87,7 +87,7 @@ func Execute(version, commit string) {
 	rootCmd.AddCommand(buildDockerCliPluginMetadata(version, commit))
 	rootCmd.AddCommand(buildExecRootCmd())
 	rootCmd.AddCommand(buildVsCodeCommand())
-	rootCmd.AddCommand(buildPhpProfilerCommand())
+	rootCmd.AddCommand(buildSpxCommand())
 	rootCmd.AddCommand(buildXdebugCommand())
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)

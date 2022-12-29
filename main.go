@@ -21,15 +21,13 @@ THE SOFTWARE.
 */
 package main
 
-import "github.com/sandstorm/docker-execroot/cmd"
-
+import "github.com/sandstorm/drydock/cmd"
 
 // set by goreleaser; see https://goreleaser.com/environment/
 var (
 	version = "dev"
 	commit  = "none"
 )
-
 
 func main() {
 	cmd.Execute(version, commit)
