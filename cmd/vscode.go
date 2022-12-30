@@ -20,17 +20,17 @@ func buildVsCodeCommand() *cobra.Command {
 	var execRootCmd = &cobra.Command{
 		Use:   "vscode SERVICE-or-CONTAINER [PATH]",
 		Short: "Opens VScode to a container, where you can edit all files (because using root)",
-		Long: color.Sprintf(`Usage:	docker vscode SERVICE-OR-CONTAINER [PATH]
+		Long: color.Sprintf(`Usage:	drydock vscode SERVICE-OR-CONTAINER [PATH]
 
 Open VSCode Remote Containers as root; at path [PATH].
 
 <op=underscore;>Examples</>
 
 <op=bold;>Open VSCode as root user</>
-	docker vscode <op=italic;>myContainer</>
+	drydock vscode <op=italic;>myContainer</>
 
 <op=bold;>Open a specific folder in VSCode as root user</>
-	docker vscode <op=italic;>myContainer</> /app
+	drydock vscode <op=italic;>myContainer</> /app
 `),
 		Args: cobra.RangeArgs(1, 2),
 

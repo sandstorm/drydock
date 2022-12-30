@@ -80,7 +80,7 @@ func buildXdebugCommand() *cobra.Command {
 	var command = &cobra.Command{
 		Use:   "xdebug [flags] SERVICE-or-CONTAINER",
 		Short: "Run Xdebug in the given container",
-		Long: color.Sprintf(`Usage:	docker xdebug [flags] SERVICE-OR-CONTAINER
+		Long: color.Sprintf(`Usage:	drydock xdebug [flags] SERVICE-OR-CONTAINER
 
 Run Xdebug https://xdebug.org in the given PHP Container, and reloads
 the PHP Process such that the debugger is enabled.
@@ -95,13 +95,13 @@ the PHP Process such that the debugger is enabled.
 <op=underscore;>Examples</>
 
 <op=bold;>Run Xdebug in a running PHP container</>
-	docker xdebug <op=italic;>myContainer</>
+	drydock xdebug <op=italic;>myContainer</>
 
 <op=bold;>Run Xdebug in a running docker-compose service</>
-	docker xdebug <op=italic;>my-docker-compose-service</>
+	drydock xdebug <op=italic;>my-docker-compose-service</>
 
 <op=bold;>Run Xdebug a Neos/Flow Application</>
-	docker xdebug <op=italic;>my-docker-compose-service</> --mount=app/Data/Temporary,Packages 
+	drydock xdebug <op=italic;>my-docker-compose-service</> --mount=app/Data/Temporary,Packages 
 
 <op=underscore;>Background:</>
 

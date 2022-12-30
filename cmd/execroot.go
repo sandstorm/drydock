@@ -17,7 +17,7 @@ func buildExecRootCmd() *cobra.Command {
 	var execRootCmd = &cobra.Command{
 		Use:   "execroot [flags] SERVICE-or-CONTAINER COMMAND [ARG...]",
 		Short: "executes a command or an interactive shell ('docker-compose exec' or 'docker exec'), but enters the container as root in all cases",
-		Long: color.Sprintf(`Usage:	docker execroot [flags] SERVICE-OR-CONTAINER COMMAND [ARG...]
+		Long: color.Sprintf(`Usage:	drydock execroot [flags] SERVICE-OR-CONTAINER COMMAND [ARG...]
 
 Run a command AS ROOT in a running container or docker-compose service.
 
@@ -30,19 +30,19 @@ Run a command AS ROOT in a running container or docker-compose service.
 <op=underscore;>Examples</>
 
 <op=bold;>Get a root shell in a running container</>
-	docker execroot <op=italic;>myContainer</>
+	drydock execroot <op=italic;>myContainer</>
 
 <op=bold;>Get a root shell in a running docker-compose service</>
-	docker execroot <op=italic;>my-docker-compose-service</>
+	drydock execroot <op=italic;>my-docker-compose-service</>
 
 <op=bold;>Execute a command as root</>
-	docker execroot <op=italic;>myContainer</> whoami
+	drydock execroot <op=italic;>myContainer</> whoami
 
 <op=bold;>Stay in the debug container instead of entering the target container</>
-	docker execroot --no-chroot <op=italic;>myContainer</>
+	drydock execroot --no-chroot <op=italic;>myContainer</>
 
 <op=bold;>Change the debug container</>
-	docker execroot --no-chroot --debug-image=alpine <op=italic;>myContainer</>
+	drydock execroot --no-chroot --debug-image=alpine <op=italic;>myContainer</>
 
 <op=underscore;>Background:</>
 
