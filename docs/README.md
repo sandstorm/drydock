@@ -39,7 +39,7 @@ We have tested the tools in OSX. They also can work on other platforms, but were
 * [`drydock execroot [containername]`](https://sandstorm.github.io/drydock/#execroot)
 * [`drydock vscode [containername]`](https://sandstorm.github.io/drydock/#vscode)
 * [`drydock spx [containername]`](https://sandstorm.github.io/drydock/#spx)
-drydock xdebug -h
+* [`drydock xdebug [containername]`](https://sandstorm.github.io/drydock/#xdebug)
 
 
 ## License

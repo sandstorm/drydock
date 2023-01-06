@@ -56,6 +56,8 @@ func phpXdebugMountScript(extraMountFolders string) string {
 		}
 
 		return mountSlashContainer + `
+echo https://github.com/117503445/GoWebDAV/releases/download/1.3.5/gowebdav_linux_` + runtime.GOARCH + `
+
 curl -L -o /bin/gowebdav https://github.com/117503445/GoWebDAV/releases/download/1.3.5/gowebdav_linux_` + runtime.GOARCH + `
 chmod +x /bin/gowebdav
 

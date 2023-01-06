@@ -13,12 +13,13 @@ before:
     - go mod download
 builds:
   -
-    id: "docker-debug"
+    id: "drydock"
     main: ./main.go
     goos:
       - darwin
     goarch:
       - amd64
+      - arm64
 
 archives:
 - replacements:
