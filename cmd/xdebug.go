@@ -28,9 +28,10 @@ func convertToTopLevelExport(exportedPath string) string {
 //     (important for the `make install` step).
 //   - reload the config
 func phpXdebugInstallScript(pid string, extraMountFolders string) string {
+	// fall back to xdebug 3.1.6 for PHP 7.4 if xdebug 3.2 (the newest version) did not work
 	return mountSlashContainer + `
 cat << EOF | chroot /container
-	pecl install xdebug
+	pecl install xdebug || pecl install xdebug-3.1.6
 EOF
 
 cat << EOF > /container$PHP_INI_DIR/conf.d/xdebug.ini
