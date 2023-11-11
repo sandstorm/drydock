@@ -31,6 +31,8 @@ func phpXdebugInstallScript(pid string, extraMountFolders string) string {
 	// fall back to xdebug 3.1.6 for PHP 7.4 if xdebug 3.2 (the newest version) did not work
 	return mountSlashContainer + `
 cat << EOF | chroot /container
+	export HTTP_PROXY=""
+	export HTTPS_PROXY="" 
 	pecl install xdebug || pecl install xdebug-3.1.6
 EOF
 

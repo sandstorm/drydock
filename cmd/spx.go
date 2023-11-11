@@ -19,7 +19,7 @@ import (
 const phpSpxInstallScript = mountSlashContainer + `
 
 rm -Rf /container/php-spx /php-spx
-git clone --branch release/latest https://github.com/NoiseByNorthwest/php-spx.git /php-spx
+HTTP_PROXY="" HTTPS_PROXY="" git clone --branch release/latest https://github.com/NoiseByNorthwest/php-spx.git /php-spx
 mv /php-spx /container
 
 
