@@ -8,3 +8,14 @@ as it might happen that a pull request slips through.
 
 Simply have a modern Go version installed; check out the project somewhere (NOT in $GOPATH, as we use Go Modules),
 and then run `./dev.sh build`.
+
+## Releasing
+
+```bash
+
+git push
+git tag v3.x.y
+git push origin v3.x.y
+
+goreleaser --rm-dist
+```
