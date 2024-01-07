@@ -3,25 +3,29 @@ package networkmanager
 import (
 	"bytes"
 	"fmt"
-	"os/exec"
-
 	"github.com/docker/docker/api/types"
+	"github.com/sandstorm/drydock/cmd/docker-net-connect/mdns"
+	"net"
+	"os/exec"
+	"strings"
 )
 
 type NetworkManager struct {
 	DockerNetworks map[string]types.NetworkResource
+	mdnsConfig     *mdns.Config
 }
 
-func New() NetworkManager {
+func New(mdnsConfig *mdns.Config) NetworkManager {
 	return NetworkManager{
 		DockerNetworks: map[string]types.NetworkResource{},
+		mdnsConfig:     mdnsConfig,
 	}
 }
 
 // Set the point-to-point IP address configuration on a network interface.
 func (manager *NetworkManager) SetInterfaceAddress(ip string, peerIp string, iface string) (string, string, error) {
 
-	cmd := exec.Command("ifconfig", iface, "inet", ip+"/32", peerIp)
+	cmd := exec.Command("/sbin/ifconfig", iface, "inet", ip+"/32", peerIp)
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -79,6 +83,22 @@ func (manager *NetworkManager) ProcessDockerNetworkCreate(network types.NetworkR
 				fmt.Errorf("Failed to add route: %v. %v\n", err, stderr)
 			}
 		}
+	}
+}
+
+func (manager *NetworkManager) ProcessDockerContainerCreate(container types.Container) {
+	for _, name := range container.Names {
+		for _, networkSettings := range container.NetworkSettings.Networks {
+			name = strings.ReplaceAll(name, "/", "")
+			print(name)
+			print("\n!!!!!!!!!!!\n")
+			manager.mdnsConfig.LocalNamesToIps[name+".drydock.local."] = net.ParseIP(networkSettings.IPAddress)
+
+			// TODO only register first IP for now
+			break
+
+		}
+
 	}
 }
 

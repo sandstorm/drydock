@@ -1,10 +1,13 @@
 //go:build darwin
+// +build darwin
 
 package main
 
 import (
 	"context"
 	"fmt"
+	"github.com/sandstorm/drydock/cmd/docker-net-connect/mdns"
+	"golang.org/x/net/ipv4"
 	"io"
 	"net"
 	"os"
@@ -25,8 +28,8 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 
-	"github.com/chipmk/docker-mac-net-connect/networkmanager"
-	"github.com/chipmk/docker-mac-net-connect/version"
+	"github.com/sandstorm/drydock/cmd/docker-net-connect/networkmanager"
+	"github.com/sandstorm/drydock/cmd/docker-net-connect/version"
 )
 
 const (
@@ -161,8 +164,12 @@ func main() {
 		os.Exit(ExitSetupFailed)
 	}
 
-	networkManager := networkmanager.New()
+	mdnsConfig := &mdns.Config{
+		LocalNamesToIps: make(map[string]net.IP),
+		Logger:          logger,
+	}
 
+	networkManager := networkmanager.New(mdnsConfig)
 	_, stderr, err := networkManager.SetInterfaceAddress(hostPeerIp, vmPeerIp, interfaceName)
 	if err != nil {
 		logger.Errorf("Failed to set interface address with ifconfig: %v. %v", err, stderr)
@@ -180,6 +187,26 @@ func main() {
 	logger.Verbosef("Wireguard server listening\n")
 
 	ctx := context.Background()
+
+	go func() {
+		addr, err := net.ResolveUDPAddr("udp", mdns.DefaultAddress)
+		if err != nil {
+			logger.Errorf("Failed to listen to mdns 1: %v. %v", err, stderr)
+			os.Exit(ExitSetupFailed)
+		}
+
+		l, err := net.ListenUDP("udp4", addr)
+		if err != nil {
+			logger.Errorf("Failed to listen to mdns 2: %v. %v", err, stderr)
+			os.Exit(ExitSetupFailed)
+		}
+
+		_, err = mdns.Server(ipv4.NewPacketConn(l), mdnsConfig)
+		if err != nil {
+			panic(err)
+		}
+		select {}
+	}()
 
 	go func() {
 		for {
@@ -201,6 +228,16 @@ func main() {
 
 			for _, network := range networks {
 				networkManager.ProcessDockerNetworkCreate(network, interfaceName)
+			}
+
+			containers, err := cli.ContainerList(ctx, types.ContainerListOptions{})
+			if err != nil {
+				logger.Errorf("Failed to list Docker containers: %v", err)
+				time.Sleep(5 * time.Second)
+				continue
+			}
+			for _, dockerContainer := range containers {
+				networkManager.ProcessDockerContainerCreate(dockerContainer)
 			}
 
 			logger.Verbosef("Watching Docker events\n")
@@ -289,6 +326,8 @@ func setupVm(
 		}
 
 		io.Copy(os.Stdout, pullStream)
+	} else {
+		fmt.Printf("Image exists locally\n")
 	}
 
 	resp, err := dockerCli.ContainerCreate(ctx, &container.Config{

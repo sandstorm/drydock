@@ -1,4 +1,4 @@
-PROJECT         := github.com/chipmk/docker-mac-net-connect
+PROJECT         := github.com/sandstorm/drydock/cmd/docker-mac-net-connect
 SETUP_IMAGE     := ghcr.io/chipmk/docker-mac-net-connect/setup
 VERSION         := $(shell git describe --tags)
 LD_FLAGS        := -X ${PROJECT}/version.Version=${VERSION} -X ${PROJECT}/version.SetupImage=${SETUP_IMAGE}

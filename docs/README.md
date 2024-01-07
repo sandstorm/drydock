@@ -45,3 +45,12 @@ We have tested the tools in OSX. They also can work on other platforms, but were
 ## License
 
 MIT
+
+## Thanks:
+
+- to https://github.com/gregnr who built https://github.com/chipmk/docker-mac-net-connect - which we forked
+  in cmd/docker-net-connect
+- to https://orbstack.dev/ who pushed the boundaries of Docker for Mac - and which serves as inspiration
+  for cmd/docker-net-connect (though I do not know how they built it :) )
+- https://github.com/pion/mdns for the MDNS implementation base which we forked for cmd/docker-net-connect
+
