@@ -32,7 +32,7 @@ func phpXdebugInstallScript(pid string, extraMountFolders string) string {
 	return mountSlashContainer + `
 cat << EOF | chroot /container
 	export HTTP_PROXY=""
-	export HTTPS_PROXY="" 
+	export HTTPS_PROXY=""
 	pecl install xdebug || pecl install xdebug-3.1.6
 EOF
 
@@ -59,9 +59,13 @@ func phpXdebugMountScript(extraMountFolders string) string {
 		}
 
 		return mountSlashContainer + `
-echo https://github.com/117503445/GoWebDAV/releases/download/1.3.5/gowebdav_linux_` + runtime.GOARCH + `
 
-curl -L -o /bin/gowebdav https://github.com/117503445/GoWebDAV/releases/download/1.3.5/gowebdav_linux_` + runtime.GOARCH + `
+export HTTP_PROXY=""
+export HTTPS_PROXY=""
+
+echo https://github.com/117503445/GoWebDAV/releases/download/1.9.0/gowebdav_linux_` + runtime.GOARCH + `
+
+curl -L -o /bin/gowebdav https://github.com/117503445/GoWebDAV/releases/download/1.9.0/gowebdav_linux_` + runtime.GOARCH + `
 chmod +x /bin/gowebdav
 
 echo "Starting webdav server for extra mounts on  ` + extraMountFolders + `"
@@ -93,7 +97,7 @@ the PHP Process such that the debugger is enabled.
 <op=underscore;>Options:</>
       --debug-image          What debugger docker image to use for executing nsenter (and optionally the NFS webdav server).
                              By default, nicolaka/netshoot is used
-      --mount                Extra mounts which should be mounted from the container to the host via webdav. 
+      --mount                Extra mounts which should be mounted from the container to the host via webdav.
                              This is useful to be able to f.e. debug into non-mounted files (like other packages
                              in Neos/Flow applications)
 
@@ -106,7 +110,7 @@ the PHP Process such that the debugger is enabled.
 	drydock xdebug <op=italic;>my-docker-compose-service</>
 
 <op=bold;>Run Xdebug a Neos/Flow Application</>
-	drydock xdebug <op=italic;>my-docker-compose-service</> --mount=app/Data/Temporary,Packages 
+	drydock xdebug <op=italic;>my-docker-compose-service</> --mount=app/Data/Temporary
 
 <op=underscore;>Background:</>
 
