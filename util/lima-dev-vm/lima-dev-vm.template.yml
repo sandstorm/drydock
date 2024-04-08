@@ -1,0 +1,62 @@
+
+
+# ADJUSTED FOR PERFORMANCCE
+vmType: vz
+
+# copied from https://github.com/lima-vm/lima/blob/master/examples/ubuntu.yaml, and greatly adjusted
+images:
+  # Try to use release-yyyyMMdd image if available. Note that release-yyyyMMdd will be removed after several months.
+  - location: "https://cloud-images.ubuntu.com/releases/23.10/release-20231011/ubuntu-23.10-server-cloudimg-amd64.img"
+    arch: "x86_64"
+    digest: "sha256:f6529be56da3429a56e4f5ef202bf4958201bc63f8541e478caa6e8eb712e635"
+  - location: "https://cloud-images.ubuntu.com/releases/23.10/release-20231011/ubuntu-23.10-server-cloudimg-arm64.img"
+    arch: "aarch64"
+    digest: "sha256:78d35a2f551d281912ee7e5202660d94d713aa1b5de86a17e261328cc2f093d4"
+  # Fallback to the latest release image.
+  # Hint: run `limactl prune` to invalidate the cache
+  - location: "https://cloud-images.ubuntu.com/releases/23.10/release/ubuntu-23.10-server-cloudimg-amd64.img"
+    arch: "x86_64"
+  - location: "https://cloud-images.ubuntu.com/releases/23.10/release/ubuntu-23.10-server-cloudimg-arm64.img"
+    arch: "aarch64"
+
+
+mounts:
+  - location: ~/src/drydock
+    writable: true
+    mountPoint: /drydock
+  - location: "/tmp/lima"
+    writable: true
+mountType: virtiofs
+
+# containerd is installed by the faasd installer script, not by Lima, so the values are set to false here.
+containerd:
+  system: false
+  user: false
+
+provision:
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      export DEBIAN_FRONTEND=noninteractive
+      apt install -y clang llvm libbpf-dev linux-headers-$(uname -r)
+      apt install -y golang vim
+      ln -sf /usr/include/asm-generic/ /usr/include/asm
+probes:
+ # Only `readiness` probes are supported right now.
+ - mode: readiness
+   description: golang to be installed
+   script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      if ! timeout 300s bash -c "until command -v go; do sleep 3; done"; then
+        echo >&2 "go is not installed yet"
+        exit 1
+      fi
+   hint: |
+     golang was not installed in the guest. Make sure the package system is working correctly.
+     Also see "/var/log/cloud-init-output.log" in the guest.
+
+# https://lima-vm.io/docs/config/network/#vznat
+networks:
+  - vzNAT: true
