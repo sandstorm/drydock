@@ -89,6 +89,7 @@ func Execute(version, commit string) {
 	rootCmd.AddCommand(buildVsCodeCommand())
 	rootCmd.AddCommand(buildSpxCommand())
 	rootCmd.AddCommand(buildXdebugCommand())
+	rootCmd.AddCommand(buildExcimerCommand())
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
