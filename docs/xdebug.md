@@ -11,83 +11,89 @@ because we want to use the same images for dev and prod; and xdebug comes with a
 ## Prerequisites
 
 - In IntelliJ/PHPStorm you need to enable `Run -> Start Listening for PHP Debug Connections`.
-- For Neos/Flow: In case you use the `--mount=app/Data/Temporary,app/Packages` option (read for details below),
-  it is beneficial to mark the `Data` folder as excluded, and enable `File -> Power Save Mode` to prevent
-  long-running re-indexing in the IDE.
 
 ## Usage
 
 ```bash
 drydock xdebug [container-name]
 drydock xdebug [docker-compose-name]
-# for Neos/Flow applications, additionally mount Data/Temporary, and the full Packages folder to enable
-# editing *any* file. NOTE: To prevent PHPStorm from freezing, enable `File -> Power Save Mode` while debugging.
-drydock xdebug [container-name] --mount=app/Data/Temporary,app/Packages
+# for Neos/Flow applications, read the details below!
 ```
 
 Convenience: You can either specify a container name, or also a `docker-compose` service name if you run this in a
 folder with a `docker-compose.yml` file inside).
 
-## Advanced Usage: extra mounts, f.e. for Neos/Flow
+## Usage with Neos / Flow
 
-**tl;dr: If you use Neos/Flow with the `DistributionPackages` mounted into the Docker container,
-use `drydock xdebug [container-name] --mount=app/Data/Temporary,app/Packages`.**
+tl;dr:
 
-**If you use Neos/Flow with the `DistributionPackages` *and* `Packages` mounted into the Docker container,
-use `drydock xdebug [container-name] --mount=app/Data/Temporary`.**
+1. Mount `Data/` between host and container
+2. use `xdebug_break()` to set breakpoints
 
-Read on for the full explanation.
+Full details below:
 
-Because mounting lots of files from Mac OS to Docker comes with a certain performance penalty, we often do not
-mount the full Neos/Flow project into the container. With newest Docker and *VirtioFS*, the situation has improved
-tremendously.
+**Mount `Data/` between host and container**
 
-Before VirtioFS, we have used a directory layout like the following:
+All PHP files where you want to set breakpoints need to be mounted/synced between Docker host and container. For
+Neos/Flow applications, you NEED to mount:
 
-```
-**Old Neos Mount Structure**
+- `Data` (because of transpiled PHP code files in `Data/Temporary/....`)
+- `Packages` in order to set breakpoints easily.
 
-/app
-    composer.json
-    DistributionPackages/ <-- MOUNTED from the host (as the only folder)
-      My.Package
-    Packages/
-      Framework/
-      Application/
-        My.Package <-- Symlink to DistributionPackages/My.Package
-    Data/
-      Temporary/
-```
+This comes with some performance hit (many mounted files make the system a bit slower), BUT it seems manageable
+on Apple Silicon and modern Docker for Mac.
 
-With modern Docker, we often also mount the full `Packages` folder (which still comes with a performance cost,
-but this is OKish):
+As an example, you need the following docker-compose setup:
 
-```
-**New Neos Mount Structure**
+```yaml
+services:
+  #####
+  # Neos CMS (php-fpm)
+  #####
+  neos:
+    build:
+      context: .
+      dockerfile: ./deployment/local-dev/neos/Dockerfile
 
-/app
-    composer.json
-    DistributionPackages/ <-- MOUNTED from the host
-      My.Package
-    Packages/ <-- MOUNTED from the host (additionally)
-      Framework/
-      Application/
-        My.Package <-- Symlink to DistributionPackages/My.Package
-    Data/
-      Temporary/
+    volumes:
+      - ./app/DistributionPackages/:/app/DistributionPackages/
+
+      # !!!!!!!!!!
+      # FOR DEBUGGING, the following two lines are crucial
+      - ./app/Data/:/app/Data/
+      - ./app/Packages/:/app/Packages/
+      # !!!!!!!!!!
+
+      # ... other mounts as you need them
 ```
 
-Neos/Flow compiles most PHP files into a Code Cache inside `Data/Temporary`. Even with most modern Docker
-and VirtioFS, it is too slow to mount the full `Data/Temporary` folder.
+Restart the container via `docker compose up -d` after modifying the `docker-compose.yml`. We'd like to get rid of this
+restart, but we did not manage to do this yet.
 
-For debugging to work, the IDE needs to open the temporary files because if you put a breakpoint
-in with `xdebug_break()`, these breakpoints appear in the Data/Temporary files.
+**Use `xdebug_break()` to set breakpoints**
 
-Thus, we've come up with an extra `--mount` option which allow to mount folders **from the container to the host**
-(so that is the opposite direction as usual) - and this way, we can make the cached classes available
-to PHPStorm/IntelliJ. Then, Xdebug debugging will properly work.
+Because the code which is executed resides somewhere in `Data/Temporary`, you would need to set breakpoint via the IDE there.
 
-Internally we're starting a webdav server in the sidecar debug container, and mount the share via Webdav on OSX.
+It is recommended to set breakpoints via the `xdebug_break()` function in code -> as then the IDE will open in the correct
+location and file in `Data/Temporary`.
+
+## Debugging Hints
+
+### Gateway Timeout in nginx / Caddy / ...
+
+Normally, we have a setup like this:
+
+```
+┌──────────────┐      ┌───────────┐
+│nginx / Caddy │      │  php-fpm  │
+│reverse proxy │─────▶│           │
+└──────────────┘      └───────────┘
+```
+
+nginx has some timeouts when php-fpm does not react for a certain amount of time.
+If we break at a breakpoint for a long time, we will definitely see the 504 gateway timeout in nginx.
+
+![SCR-20240410-qezg-2.png](_assets/SCR-20240410-qezg-2.png)
 
 ## Help Text
 
@@ -100,9 +106,6 @@ the PHP Process such that the debugger is enabled.
 Options:
       --debug-image          What debugger docker image to use for executing nsenter (and optionally the NFS webdav server).
                              By default, nicolaka/netshoot is used
-      --mount                Extra mounts which should be mounted from the container to the host via webdav.
-                             This is useful to be able to f.e. debug into non-mounted files (like other packages
-                             in Neos/Flow applications)
 
 Examples
 
