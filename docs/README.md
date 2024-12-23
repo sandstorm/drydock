@@ -1,12 +1,16 @@
 # drydock - Docker Debugging Tools
 
-This is a set of useful CLI tools to help debugging Docker containers:
+This is a set of useful CLI tools developed at [sandstorm.de](https://sandstorm.de) to make our development
+processes smoother and easier. It is mostly tooling to help debugging Docker containers, though starting with
+v4, we also have some general-purpose tooling for working with template projects.
 
 **General Tooling**
 
 - `drydock execroot`: Like `docker exec`, but *always* spawn a root shell
 - `drydock vscode`: Open Visual Studio Code (with the [Containers extension](https://aka.ms/vscode-remote/download/containers)),
   allowing to edit any file as root
+- `drydock template-project sync`: Keep your project in sync with changes from a template project using AI (ALPHA)
+
 
 **PHP Specific Tooling**
 
@@ -40,6 +44,7 @@ We have tested the tools in OSX. They also can work on other platforms, but were
 * [`drydock vscode [containername]`](https://sandstorm.github.io/drydock/#vscode)
 * [`drydock spx [containername]`](https://sandstorm.github.io/drydock/#spx)
 * [`drydock xdebug [containername]`](https://sandstorm.github.io/drydock/#xdebug)
+* [`drydock template-project sync`](https://sandstorm.github.io/drydock/#template-project) **(NEW)**
 
 
 ## License
