@@ -5,84 +5,128 @@ import (
 	"embed"
 	"fmt"
 	"github.com/anthropics/anthropic-sdk-go"
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing/object"
-	"github.com/go-git/go-git/v5/plumbing/storer"
+	"github.com/anthropics/anthropic-sdk-go/option"
 	"github.com/gookit/color"
 	"github.com/spf13/cobra"
+	"io"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/homedir"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
-	"time"
 )
 
 func BuildSyncCommand() *cobra.Command {
 	var (
-		templateDir string
-		stdout      bool
+		templateDir   string
+		replace       bool
+		compare       bool
+		kubeconfig    string
+		apiKeyPathK8s string
+		apiKey        string
 	)
 
 	var command = &cobra.Command{
-		Use:   "sync [filename]",
-		Short: "Sync the filename from project with a template project",
-		Long:  `Sync updates the given filename by applying changes from a template project.`,
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			filename := args[0]
+		Use:   "sync --template [template-dir] [filenames]",
+		Short: "Sync the filename from project with a template project (ALPHA FEATURE)",
+		Long: color.Sprintf(`
+<op=bold;>Usage:  drydock template-project sync --template TEMPLATE [flags] FILES...</>
+<gray>(ALPHA FEATURE - might change in further versions without notice)</>
 
+<bold>updates the given files/directories by applying changes from a template project by using Anthropic Claude AI.</>
+This is helpful to reduce drift between a kickstarter/template project and the actual project itself.
+
+
+<op=underscore;>Examples:</>
+
+<op=bold;>Sync a single file from template</>
+    drydock template-project sync --template <op=italic;>~/src/neos-on-docker-kickstart Dockerfile</>
+
+<op=bold;>Sync multiple files from template</>
+    drydock template-project sync --template <op=italic;>~/src/neos-on-docker-kickstart Dockerfile docker-compose.yml</>
+
+<op=bold;>Sync an entire folder from template</>
+    drydock template-project sync --template <op=italic;>~/src/neos-on-docker-kickstart deployment/</>
+
+<op=bold;>Comparing with Template Files</>
+    drydock template-project sync <op=bold;>--compare</> --template <op=italic;>~/src/neos-on-docker-kickstart deployment/</>
+      <gray># places the file from the template repository as .tmpl next to the original file - for easy comparison</>
+    git clean -f <gray># remove the untracked .tmpl files again</>
+
+
+<op=underscore;>Claude AI Key Configuration</>
+
+The Anthropic API key is loaded from the following locations (1st one wins):
+
+- <op=bold;>CLI Flag:</> Passed directly via --api-key flag
+- <op=bold;>Environment Variable:</> ANTHROPIC_API_KEY environment variable
+- <op=bold;>Kubernetes Secret:</> Retrieved from a Kubernetes secret, configured via:
+  - --api-key-path-k8s (format: namespace/secret-name/secret-value - default: drydock/anthropic-creds/ANTHROPIC_API_KEY)
+  - --kubeconfig flag (default: ~/.kube/config)
+
+  <gray>This is tailored to Sandstorm usage, but we are open to ideas to make this easier customizable.</>
+
+		`),
+		Args: cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if templateDir == "" {
 				return fmt.Errorf("template directory is required")
 			}
 
-			if stdout {
-				fmt.Println("Dry run mode - no changes will be made")
+			if replace {
+				fmt.Println("outputting to replace")
 			}
 
-			currentProjectFileContents, err := os.ReadFile(filename)
+			filesToProcess, err := listFilesRecursively(args)
 			if err != nil {
-				return fmt.Errorf("reading file %s: %w", filename, err)
+				return fmt.Errorf("expanding directories: %w", err)
 			}
+			for _, filename := range filesToProcess {
+				color.Fprintf(os.Stderr, "<suc>%s</>\n", filename)
 
-			currentTemplateFileContents, err := os.ReadFile(filepath.Join(templateDir, filename))
-			if err != nil {
-				return fmt.Errorf("reading file %s: %w", filepath.Join(templateDir, filename), err)
-			}
-			println(currentProjectFileContents)
-			println(currentTemplateFileContents)
+				currentProjectFileContents, err := os.ReadFile(filename)
+				if err != nil {
+					return fmt.Errorf("reading file %s: %w", filename, err)
+				}
 
-			projectFirstCommitTimestamp, err := getFirstCommitTimestamp(".")
-			if err != nil {
-				return fmt.Errorf("could not read first commit timestamp: %w", err)
-			}
-			color.Printf("Found first commit timestamp: %v", projectFirstCommitTimestamp)
+				currentTemplateFileContents, err := os.ReadFile(filepath.Join(templateDir, filename))
+				if err != nil {
+					if os.IsNotExist(err) {
+						fmt.Println("CONTINUING WITH NEXT FILE")
+						continue
+					}
+					return fmt.Errorf("reading file %s: %w", filepath.Join(templateDir, filename), err)
+				}
 
-			/*fileAtProjectStart, err := getFileAtTimestamp(templateDir, filename, projectFirstCommitTimestamp)
-			if err != nil {
-				return fmt.Errorf("could not read file at project start: %w", err)
-			}*/
-			fileAtProjectStart := ""
+				apiKey, err := loadAnthropicApiKeyWithFallbackToK8S(apiKey, apiKeyPathK8s, kubeconfig)
+				if err != nil {
+					return fmt.Errorf("coul: %w", err)
+				}
 
-			projectFiles, err := listFiles(".")
-			if err != nil {
-				return fmt.Errorf("could not list files from repo: %w", err)
-			}
+				if compare {
+					copyFile(filepath.Join(templateDir, filename), filename+".tpl")
+				}
 
-			templateFiles, err := listFiles(templateDir)
-			if err != nil {
-				return fmt.Errorf("could not list files from template repo: %w", err)
-			}
-
-			err = anthropicApi("anthropicPrompt.tmpl", syncPromptParams{
-				ProjectStructure:     strings.Join(projectFiles, "\n"),
-				TemplateStructure:    strings.Join(templateFiles, "\n"),
-				CurrentFileName:      filename,
-				CurrentProjectFile:   string(currentProjectFileContents),
-				CurrentTemplateFile:  string(currentTemplateFileContents),
-				OriginalTemplateFile: fileAtProjectStart,
-			})
-			if err != nil {
-				return fmt.Errorf("calling anthropic API: %w", err)
+				responseString, err := anthropicApi(apiKey, "anthropicPrompt.tmpl", syncPromptParams{
+					ProjectStructure:     "",
+					TemplateStructure:    "",
+					CurrentFileName:      filename,
+					CurrentProjectFile:   string(currentProjectFileContents),
+					CurrentTemplateFile:  string(currentTemplateFileContents),
+					OriginalTemplateFile: "",
+				})
+				if err != nil {
+					return fmt.Errorf("calling anthropic API: %w", err)
+				}
+				if replace {
+					err = os.WriteFile(filename, []byte(responseString), 0o644)
+					if err != nil {
+						return fmt.Errorf("writing file %s: %w", filename, err)
+					}
+				}
 			}
 
 			return nil
@@ -91,9 +135,74 @@ func BuildSyncCommand() *cobra.Command {
 
 	// Add flags
 	command.Flags().StringVar(&templateDir, "template", "", "Directory containing the template git repository")
-	command.Flags().BoolVar(&stdout, "stdout", false, "Output the modified file in stdout, instead of modifying in-place")
+	command.Flags().BoolVar(&replace, "replace", true, "Replace the modified file directly")
+	command.Flags().BoolVar(&compare, "compare", false, "Place the template file next to the project file as .tmpl, for easy comparison")
+
+	if home := homedir.HomeDir(); home != "" {
+		command.Flags().StringVar(&kubeconfig, "kubeconfig", filepath.Join(home, ".kube", "config"), "Kube config file (to retrieve ANTHROPIC_API_KEY from cluster)")
+	} else {
+		command.Flags().StringVar(&kubeconfig, "kubeconfig", "", "Kube config file (to retrieve ANTHROPIC_API_KEY from cluster)")
+	}
+	command.Flags().StringVar(&apiKeyPathK8s, "api-key-path-k8s", "drydock/anthropic-creds/ANTHROPIC_API_KEY", "Path to retrieve API key from K8S, in the form namespace/secret-name/secret-value")
+	command.Flags().StringVar(&apiKey, "api-key", "", "Anthropic API key to use (defaults to env ANTHROPIC_API_KEY)")
 
 	return command
+}
+
+func copyFile(source string, destination string) {
+	src, _ := os.Open(source)
+	dst, _ := os.Create(destination)
+	defer src.Close()
+	defer dst.Close()
+	io.Copy(dst, src)
+}
+
+func loadAnthropicApiKeyWithFallbackToK8S(apiKey string, apiKeyPathK8s string, kubeconfig string) (string, error) {
+	// ------------------------------------
+	// API key given via CLI args - always wins
+	// ------------------------------------
+	if len(apiKey) > 0 {
+		return apiKey, nil
+	}
+
+	// ------------------------------------
+	// API key given via env variable - wins before K8S
+	// ------------------------------------
+	val, exists := os.LookupEnv("ANTHROPIC_API_KEY")
+	if exists {
+		return val, nil
+	}
+
+	// ------------------------------------
+	// fallback to K8S
+	// ------------------------------------
+	splitApiKeyPath := strings.SplitN(apiKeyPathK8s, "/", 3)
+	if len(splitApiKeyPath) != 3 {
+		return "", fmt.Errorf("api-key-path-k8s is not in the form namespace/secret-name/secret-value (given: %s)", apiKeyPathK8s)
+	}
+
+	// use the current context in kubeconfig
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	if err != nil {
+		return "", fmt.Errorf("reading kube config %s: %w", kubeconfig, err)
+	}
+
+	// create the clientset
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return "", fmt.Errorf("reading creating clientset for %s: %w", kubeconfig, err)
+	}
+
+	// read the secret
+	secret, err := clientset.CoreV1().Secrets(splitApiKeyPath[0]).Get(context.Background(), splitApiKeyPath[1], metav1.GetOptions{})
+	if err != nil {
+		return "", fmt.Errorf("reading secret on path %s: %w", apiKeyPathK8s, err)
+	}
+	value, exists := secret.Data[splitApiKeyPath[2]]
+	if !exists {
+		return "", fmt.Errorf("secret %s %s does not contain element %s", splitApiKeyPath[0], splitApiKeyPath[1], splitApiKeyPath[2])
+	}
+	return string(value), nil
 }
 
 type syncPromptParams struct {
@@ -108,157 +217,80 @@ type syncPromptParams struct {
 //go:embed *.tmpl
 var templateFS embed.FS
 
-func anthropicApi(templateFileName string, data any) error {
+func anthropicApi(apiKey, templateFileName string, data any) (string, error) {
 	templates, err := template.ParseFS(templateFS, "*.tmpl")
 	if err != nil {
-		return fmt.Errorf("loading templates: %w", err)
+		return "", fmt.Errorf("loading templates: %w", err)
 	}
 	var buf strings.Builder
 	err = templates.ExecuteTemplate(&buf, templateFileName, data)
 
 	if err != nil {
-		return fmt.Errorf("rendering template: %w", err)
+		return "", fmt.Errorf("rendering template: %w", err)
 	}
 
 	client := anthropic.NewClient(
-	//option.WithAPIKey("my-anthropic-api-key"), // defaults to os.LookupEnv("ANTHROPIC_API_KEY")
+		option.WithAPIKey(apiKey),
 	)
-	message, err := client.Messages.New(context.Background(), anthropic.MessageNewParams{
+	stream := client.Messages.NewStreaming(context.Background(), anthropic.MessageNewParams{
 		Model:     anthropic.F(anthropic.ModelClaude3_5SonnetLatest),
 		MaxTokens: anthropic.F(int64(2048)),
 		Messages: anthropic.F([]anthropic.MessageParam{
 			anthropic.NewUserMessage(anthropic.NewTextBlock(buf.String())),
 		}),
 	})
-	color.Printf("<op=italic;>%s</>", buf.String())
-	if err != nil {
-		panic(err.Error())
-	}
-	fmt.Printf("%+v\n", message.Content)
-	return nil
-}
+	var accumulated strings.Builder
+	message := anthropic.Message{}
+	for stream.Next() {
+		event := stream.Current()
+		message.Accumulate(event)
 
-func getFileAtTimestamp(repoPath string, filePath string, timestamp time.Time) (string, error) {
-	// Open the repository
-	repo, err := git.PlainOpen(repoPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to open repo: %w", err)
-	}
-
-	// Get repo HEAD reference
-	ref, err := repo.Head()
-	if err != nil {
-		return "", fmt.Errorf("failed to get HEAD: %w", err)
-	}
-
-	// Get commit log
-	cIter, err := repo.Log(&git.LogOptions{From: ref.Hash()})
-	if err != nil {
-		return "", fmt.Errorf("failed to get log: %w", err)
-	}
-
-	// Find the most recent commit before the timestamp
-	var targetCommit *object.Commit
-	err = cIter.ForEach(func(c *object.Commit) error {
-		if c.Committer.When.Before(timestamp) || c.Committer.When.Equal(timestamp) {
-			targetCommit = c
-			return storer.ErrStop
+		switch delta := event.Delta.(type) {
+		case anthropic.ContentBlockDeltaEventDelta:
+			if delta.Text != "" {
+				print(delta.Text)
+				accumulated.WriteString(delta.Text)
+			}
 		}
-		return nil
-	})
-	if err != nil {
-		return "", fmt.Errorf("failed to iterate commits: %w", err)
 	}
 
-	if targetCommit == nil {
-		return "", fmt.Errorf("no commit found before timestamp")
+	if stream.Err() != nil {
+		return "", fmt.Errorf("calling Anthropic API: %w", stream.Err())
 	}
-
-	// Get the file from the commit's tree
-	file, err := targetCommit.File(filePath)
-	if err != nil {
-		return "", fmt.Errorf("failed to get file: %w", err)
-	}
-
-	// Get the file contents
-	contents, err := file.Contents()
-	if err != nil {
-		return "", fmt.Errorf("failed to get contents: %w", err)
-	}
-
-	return contents, nil
+	return accumulated.String(), nil
 }
 
-func getFirstCommitTimestamp(repoPath string) (time.Time, error) {
-	// Open the repository
-	repo, err := git.PlainOpen(repoPath)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("failed to open repo: %w", err)
+func listFilesRecursively(paths []string) ([]string, error) {
+	var allFiles []string
+
+	for _, path := range paths {
+		// Get file info to check if it's a directory
+		info, err := os.Stat(path)
+		if err != nil {
+			return nil, fmt.Errorf("error accessing path %s: %w", path, err)
+		}
+
+		if info.IsDir() {
+			// If it's a directory, walk it recursively
+			err := filepath.Walk(path, func(filePath string, fileInfo os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+
+				if !fileInfo.IsDir() {
+					allFiles = append(allFiles, filePath)
+				}
+				return nil
+			})
+
+			if err != nil {
+				return nil, fmt.Errorf("error walking directory %s: %w", path, err)
+			}
+		} else {
+			// If it's a file, add it directly
+			allFiles = append(allFiles, path)
+		}
 	}
 
-	// Get repo HEAD reference
-	ref, err := repo.Head()
-	if err != nil {
-		return time.Time{}, fmt.Errorf("failed to get HEAD: %w", err)
-	}
-
-	// Get commit log
-	cIter, err := repo.Log(&git.LogOptions{From: ref.Hash()})
-	if err != nil {
-		return time.Time{}, fmt.Errorf("failed to get log: %w", err)
-	}
-
-	// Find the last (first) commit
-	var firstCommit *object.Commit
-	err = cIter.ForEach(func(c *object.Commit) error {
-		firstCommit = c
-		return nil
-	})
-	if err != nil {
-		return time.Time{}, fmt.Errorf("failed to iterate commits: %w", err)
-	}
-
-	if firstCommit == nil {
-		return time.Time{}, fmt.Errorf("no commits found")
-	}
-
-	return firstCommit.Committer.When, nil
-}
-
-func listFiles(repoPath string) ([]string, error) {
-	// Open the repository
-	repo, err := git.PlainOpen(repoPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open repo: %w", err)
-	}
-
-	// Get HEAD reference
-	ref, err := repo.Head()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get HEAD: %w", err)
-	}
-
-	// Get the commit object
-	commit, err := repo.CommitObject(ref.Hash())
-	if err != nil {
-		return nil, fmt.Errorf("failed to get commit: %w", err)
-	}
-
-	// Get the tree from the commit
-	tree, err := commit.Tree()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get tree: %w", err)
-	}
-
-	var files []string
-	// Walk the tree
-	err = tree.Files().ForEach(func(f *object.File) error {
-		files = append(files, f.Name)
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to walk tree: %w", err)
-	}
-
-	return files, nil
+	return allFiles, nil
 }
