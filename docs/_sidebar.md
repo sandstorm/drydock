@@ -3,7 +3,9 @@
 - [drydock vscode](vscode.md)
 - [drydock spx](spx.md)
 - [drydock xdebug](xdebug.md)
+- [drydock template-project sync](template-project.md) **(NEW)**
 - [Architecture](architecture.md)
+  - [12/2024 - concept for syncing](2024_12_23_conceptForSyncing)
 ---
 
 - [Contributing](CONTRIBUTING.md)

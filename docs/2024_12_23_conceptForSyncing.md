@@ -1,5 +1,6 @@
-# Adjust to template project
-# CLI API design
+# Rough Implementation Concept for Syncing
+
+## CLI API design
 
 ```
 We are often creating projects based on a template (by copying and search-replacing).
@@ -17,7 +18,7 @@ drydock template sync [--template-ref <ref>] [--dry-run] [--force] [--conflicts 
 
 -> `template-project`
 
-# Prompt Design
+## Prompt Design
 
 ```
 We are often creating projects based on a template (by copying and search-replacing).
